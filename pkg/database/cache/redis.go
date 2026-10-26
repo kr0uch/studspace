@@ -3,7 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"net"
 	"time"
@@ -11,7 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var ErrCacheMiss = errors.New("cache: key not found")
+var ErrCacheMiss = stderrors.New("cache: key not found")
 
 type RedisConfig struct {
 	Host     string `yaml:"redis_host" env:"REDIS_HOST" env-default:"localhost"`
@@ -75,7 +75,7 @@ func (r *RedisDB) SetNX(ctx context.Context, key string, value any, ttl time.Dur
 
 func (r *RedisDB) Get(ctx context.Context, key string, dest any) error {
 	val, err := r.client.Get(ctx, key).Bytes()
-	if errors.Is(err, redis.Nil) {
+	if stderrors.Is(err, redis.Nil) {
 		return ErrCacheMiss
 	}
 	if err != nil {
