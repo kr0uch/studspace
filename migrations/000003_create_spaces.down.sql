@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS space_amenities;
+DROP TABLE IF EXISTS amenities;
+DROP TABLE IF EXISTS spaces;
