@@ -23,7 +23,7 @@ const (
 )
 
 type Event struct {
-	ID          int64
+	EventID     int64
 	Title       string
 	Organizer   string
 	Category    EventCategory

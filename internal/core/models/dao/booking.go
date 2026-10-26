@@ -9,7 +9,7 @@ import (
 )
 
 type Booking struct {
-	ID                int64       `db:"id"`
+	BookingID         int64       `db:"booking_id"`
 	UserID            int64       `db:"user_id"`
 	SpaceID           int16       `db:"space_id"`
 	FirstName         string      `db:"first_name"`
@@ -31,18 +31,18 @@ type Booking struct {
 }
 
 type BookingStatusLog struct {
-	ID          int64       `db:"id"`
-	BookingID   int64       `db:"booking_id"`
-	FromStatus  null.String `db:"from_status"`
-	ToStatus    string      `db:"to_status"`
-	ActorUserID int64       `db:"actor_user_id"`
-	Comment     null.String `db:"comment"`
-	CreatedAt   time.Time   `db:"created_at"`
+	BookingStatusLogID int64       `db:"booking_status_log_id"`
+	BookingID          int64       `db:"booking_id"`
+	FromStatus         null.String `db:"from_status"`
+	ToStatus           string      `db:"to_status"`
+	ActorUserID        int64       `db:"actor_user_id"`
+	Comment            null.String `db:"comment"`
+	CreatedAt          time.Time   `db:"created_at"`
 }
 
 func (b Booking) ToEntity() entities.Booking {
 	result := entities.Booking{
-		ID:                b.ID,
+		BookingID:         b.BookingID,
 		UserID:            b.UserID,
 		SpaceID:           b.SpaceID,
 		FirstName:         b.FirstName,
@@ -71,7 +71,7 @@ func (b Booking) ToEntity() entities.Booking {
 
 func BookingFromEntity(e entities.Booking) Booking {
 	result := Booking{
-		ID:                e.ID,
+		BookingID:         e.BookingID,
 		UserID:            e.UserID,
 		SpaceID:           e.SpaceID,
 		FirstName:         e.FirstName,
@@ -98,24 +98,24 @@ func BookingFromEntity(e entities.Booking) Booking {
 
 func (l BookingStatusLog) ToEntity() entities.BookingStatusLog {
 	return entities.BookingStatusLog{
-		ID:          l.ID,
-		BookingID:   l.BookingID,
-		FromStatus:  null.NewValue(entities.BookingStatus(l.FromStatus.String), l.FromStatus.Valid),
-		ToStatus:    entities.BookingStatus(l.ToStatus),
-		ActorUserID: l.ActorUserID,
-		Comment:     l.Comment,
-		CreatedAt:   l.CreatedAt,
+		BookingStatusLogID: l.BookingStatusLogID,
+		BookingID:          l.BookingID,
+		FromStatus:         null.NewValue(entities.BookingStatus(l.FromStatus.String), l.FromStatus.Valid),
+		ToStatus:           entities.BookingStatus(l.ToStatus),
+		ActorUserID:        l.ActorUserID,
+		Comment:            l.Comment,
+		CreatedAt:          l.CreatedAt,
 	}
 }
 
 func BookingStatusLogFromEntity(e entities.BookingStatusLog) BookingStatusLog {
 	return BookingStatusLog{
-		ID:          e.ID,
-		BookingID:   e.BookingID,
-		FromStatus:  null.NewString(string(e.FromStatus.V), e.FromStatus.Valid),
-		ToStatus:    string(e.ToStatus),
-		ActorUserID: e.ActorUserID,
-		Comment:     e.Comment,
-		CreatedAt:   e.CreatedAt,
+		BookingStatusLogID: e.BookingStatusLogID,
+		BookingID:          e.BookingID,
+		FromStatus:         null.NewString(string(e.FromStatus.V), e.FromStatus.Valid),
+		ToStatus:           string(e.ToStatus),
+		ActorUserID:        e.ActorUserID,
+		Comment:            e.Comment,
+		CreatedAt:          e.CreatedAt,
 	}
 }

@@ -7,7 +7,7 @@ import (
 )
 
 type Space struct {
-	ID          int16
+	SpaceID     int16
 	Code        string
 	Name        string
 	Kind        string
@@ -22,9 +22,9 @@ type Space struct {
 }
 
 type Amenity struct {
-	ID   int16
-	Name string
-	Icon string
+	AmenityID int16
+	Name      string
+	Icon      string
 }
 
 type SpaceState string
@@ -37,23 +37,4 @@ const (
 type SpaceNowStatus struct {
 	State SpaceState
 	Until null.Time
-}
-
-type OccupancyType string
-
-const (
-	OccupancyTypeBooking OccupancyType = "booking"
-	OccupancyTypeEvent   OccupancyType = "event"
-)
-
-type Occupancy struct {
-	SpaceID  int16
-	Type     OccupancyType
-	SourceID int64
-	StartsAt time.Time
-	EndsAt   time.Time
-}
-
-func (o Occupancy) Overlaps(startsAt, endsAt time.Time) bool {
-	return o.StartsAt.Before(endsAt) && startsAt.Before(o.EndsAt)
 }

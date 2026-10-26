@@ -9,7 +9,7 @@ import (
 )
 
 type Event struct {
-	ID          int64       `db:"id"`
+	EventID     int64       `db:"event_id"`
 	Title       string      `db:"title"`
 	Organizer   string      `db:"organizer"`
 	Category    string      `db:"category"`
@@ -46,7 +46,7 @@ type EventWaitlistEntry struct {
 
 func (e Event) ToEntity() entities.Event {
 	return entities.Event{
-		ID:          e.ID,
+		EventID:     e.EventID,
 		Title:       e.Title,
 		Organizer:   e.Organizer,
 		Category:    entities.EventCategory(e.Category),
@@ -63,7 +63,7 @@ func (e Event) ToEntity() entities.Event {
 
 func EventFromEntity(e entities.Event) Event {
 	return Event{
-		ID:          e.ID,
+		EventID:     e.EventID,
 		Title:       e.Title,
 		Organizer:   e.Organizer,
 		Category:    string(e.Category),
