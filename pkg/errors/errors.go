@@ -3,7 +3,7 @@ package errors
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	stderrors "errors"
 	"net"
 	"net/http"
 )
@@ -75,7 +75,7 @@ func (e *HttpError) Wrap(err error) *HttpError {
 
 func ParseHttpError(err error) *HttpError {
 	var val *HttpError
-	if errors.As(err, &val) {
+	if stderrors.As(err, &val) {
 		return val
 	}
 	return ErrInternal.Wrap(err)
@@ -126,11 +126,11 @@ func Validation(fields map[string]string) *HttpError {
 }
 
 func IsTimeout(err error) bool {
-	if errors.Is(err, context.DeadlineExceeded) {
+	if stderrors.Is(err, context.DeadlineExceeded) {
 		return true
 	}
 	var netErr net.Error
-	return errors.As(err, &netErr) && netErr.Timeout()
+	return stderrors.As(err, &netErr) && netErr.Timeout()
 }
 
 var (
