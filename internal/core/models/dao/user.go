@@ -9,7 +9,7 @@ import (
 )
 
 type User struct {
-	ID                   int64       `db:"id"`
+	UserID               int64       `db:"user_id"`
 	VKUserID             int64       `db:"vk_user_id"`
 	FirstName            string      `db:"first_name"`
 	LastName             string      `db:"last_name"`
@@ -17,12 +17,11 @@ type User struct {
 	Role                 string      `db:"role"`
 	NotificationsAllowed bool        `db:"notifications_allowed"`
 	CreatedAt            time.Time   `db:"created_at"`
-	LastSeenAt           null.Time   `db:"last_seen_at"`
 }
 
 func (u User) ToEntity() entities.User {
 	return entities.User{
-		ID:                   u.ID,
+		UserID:               u.UserID,
 		VKUserID:             u.VKUserID,
 		FirstName:            u.FirstName,
 		LastName:             u.LastName,
@@ -30,13 +29,12 @@ func (u User) ToEntity() entities.User {
 		Role:                 entities.UserRole(u.Role),
 		NotificationsAllowed: u.NotificationsAllowed,
 		CreatedAt:            u.CreatedAt,
-		LastSeenAt:           u.LastSeenAt,
 	}
 }
 
 func UserFromEntity(e entities.User) User {
 	return User{
-		ID:                   e.ID,
+		UserID:               e.UserID,
 		VKUserID:             e.VKUserID,
 		FirstName:            e.FirstName,
 		LastName:             e.LastName,
@@ -44,6 +42,5 @@ func UserFromEntity(e entities.User) User {
 		Role:                 string(e.Role),
 		NotificationsAllowed: e.NotificationsAllowed,
 		CreatedAt:            e.CreatedAt,
-		LastSeenAt:           e.LastSeenAt,
 	}
 }

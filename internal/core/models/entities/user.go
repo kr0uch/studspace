@@ -14,7 +14,7 @@ const (
 )
 
 type User struct {
-	ID                   int64
+	UserID               int64
 	VKUserID             int64
 	FirstName            string
 	LastName             string
@@ -22,7 +22,6 @@ type User struct {
 	Role                 UserRole
 	NotificationsAllowed bool
 	CreatedAt            time.Time
-	LastSeenAt           null.Time
 }
 
 func (u User) IsAdmin() bool {

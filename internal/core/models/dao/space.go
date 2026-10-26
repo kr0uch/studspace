@@ -10,7 +10,7 @@ import (
 )
 
 type Space struct {
-	ID          int16       `db:"id"`
+	SpaceID     int16       `db:"space_id"`
 	Code        string      `db:"code"`
 	Name        string      `db:"name"`
 	Kind        string      `db:"kind"`
@@ -24,9 +24,9 @@ type Space struct {
 }
 
 type Amenity struct {
-	ID   int16  `db:"id"`
-	Name string `db:"name"`
-	Icon string `db:"icon"`
+	AmenityID int16  `db:"amenity_id"`
+	Name      string `db:"name"`
+	Icon      string `db:"icon"`
 }
 
 type SpaceAmenity struct {
@@ -37,15 +37,15 @@ type SpaceAmenity struct {
 func (s Space) ToEntity(amenities []Amenity) (entities.Space, error) {
 	openTime, err := parseClock(s.OpenTime)
 	if err != nil {
-		return entities.Space{}, fmt.Errorf("space %d open_time: %w", s.ID, err)
+		return entities.Space{}, fmt.Errorf("space %d open_time: %w", s.SpaceID, err)
 	}
 	closeTime, err := parseClock(s.CloseTime)
 	if err != nil {
-		return entities.Space{}, fmt.Errorf("space %d close_time: %w", s.ID, err)
+		return entities.Space{}, fmt.Errorf("space %d close_time: %w", s.SpaceID, err)
 	}
 
 	result := entities.Space{
-		ID:          s.ID,
+		SpaceID:     s.SpaceID,
 		Code:        s.Code,
 		Name:        s.Name,
 		Kind:        s.Kind,
@@ -66,7 +66,7 @@ func (s Space) ToEntity(amenities []Amenity) (entities.Space, error) {
 
 func SpaceFromEntity(e entities.Space) Space {
 	return Space{
-		ID:          e.ID,
+		SpaceID:     e.SpaceID,
 		Code:        e.Code,
 		Name:        e.Name,
 		Kind:        e.Kind,
@@ -82,17 +82,17 @@ func SpaceFromEntity(e entities.Space) Space {
 
 func (a Amenity) ToEntity() entities.Amenity {
 	return entities.Amenity{
-		ID:   a.ID,
-		Name: a.Name,
-		Icon: a.Icon,
+		AmenityID: a.AmenityID,
+		Name:      a.Name,
+		Icon:      a.Icon,
 	}
 }
 
 func AmenityFromEntity(e entities.Amenity) Amenity {
 	return Amenity{
-		ID:   e.ID,
-		Name: e.Name,
-		Icon: e.Icon,
+		AmenityID: e.AmenityID,
+		Name:      e.Name,
+		Icon:      e.Icon,
 	}
 }
 

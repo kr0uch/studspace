@@ -54,7 +54,7 @@ type RejectReason struct {
 }
 
 type Booking struct {
-	ID                int64
+	BookingID         int64
 	UserID            int64
 	SpaceID           int16
 	FirstName         string
@@ -104,11 +104,11 @@ func (b Booking) StudentActions(now time.Time) []BookingAction {
 }
 
 type BookingStatusLog struct {
-	ID          int64
-	BookingID   int64
-	FromStatus  null.Value[BookingStatus]
-	ToStatus    BookingStatus
-	ActorUserID int64
-	Comment     null.String
-	CreatedAt   time.Time
+	BookingStatusLogID int64
+	BookingID          int64
+	FromStatus         null.Value[BookingStatus]
+	ToStatus           BookingStatus
+	ActorUserID        int64
+	Comment            null.String
+	CreatedAt          time.Time
 }
