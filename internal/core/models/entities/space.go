@@ -30,8 +30,9 @@ type Amenity struct {
 type SpaceState string
 
 const (
-	SpaceStateFree SpaceState = "free"
-	SpaceStateBusy SpaceState = "busy"
+	SpaceStateFree   SpaceState = "free"
+	SpaceStateBusy   SpaceState = "busy"
+	SpaceStateClosed SpaceState = "closed"
 )
 
 type SpaceNowStatus struct {

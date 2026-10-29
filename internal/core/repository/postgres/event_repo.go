@@ -100,7 +100,7 @@ func (r *EventRepository) CreateEvent(ctx context.Context, event entities.Event)
 
 func (r *EventRepository) CancelEvent(ctx context.Context, eventID int64) (*entities.Event, error) {
 	var row dao.Event
-	if err := r.postgresDB.GetContext(ctx, &row, qEventCancel, eventID); err != nil {
+	if err := r.postgresDB.GetContext(ctx, &row, qEventCancel, eventID, string(entities.EventStatusCancelled)); err != nil {
 		return nil, wrapErr(err)
 	}
 	result := row.ToEntity()

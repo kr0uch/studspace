@@ -12,4 +12,4 @@ CREATE TYPE user_role AS ENUM ('student', 'admin');
 CREATE TYPE booking_status AS ENUM ('pending', 'approved', 'rejected', 'cancelled', 'withdrawn', 'completed');
 CREATE TYPE cancel_actor AS ENUM ('user', 'admin');
 CREATE TYPE event_category AS ENUM ('study', 'career', 'leisure');
-CREATE TYPE event_status AS ENUM ('draft', 'published', 'cancelled');
+CREATE TYPE event_status AS ENUM ('published', 'cancelled');
