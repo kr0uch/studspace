@@ -12,21 +12,6 @@ import (
 	"github.com/kr0uch/studspace/pkg/errors"
 )
 
-type UserBookingTab string
-
-const (
-	UserBookingTabActive  UserBookingTab = "active"
-	UserBookingTabHistory UserBookingTab = "history"
-)
-
-type AdminBookingTab string
-
-const (
-	AdminBookingTabNew      AdminBookingTab = "new"
-	AdminBookingTabApproved AdminBookingTab = "approved"
-	AdminBookingTabRejected AdminBookingTab = "rejected"
-)
-
 type BookingRepository struct {
 	postgresDB *dbpg.PostgresDB
 }
@@ -65,20 +50,20 @@ func (r *BookingRepository) GetBookingByID(ctx context.Context, bookingID int64)
 	return &result, nil
 }
 
-func (r *BookingRepository) ListUserBookings(ctx context.Context, userID int64, tab UserBookingTab, now time.Time) ([]entities.Booking, error) {
+func (r *BookingRepository) ListUserBookings(ctx context.Context, userID int64, tab entities.UserBookingTab, now time.Time) ([]entities.Booking, error) {
 	switch tab {
-	case UserBookingTabHistory:
+	case entities.UserBookingTabHistory:
 		return r.listBookings(ctx, qBookingListByUserHistory, userID, now)
 	default:
 		return r.listBookings(ctx, qBookingListByUserActive, userID, now)
 	}
 }
 
-func (r *BookingRepository) ListAdminBookings(ctx context.Context, tab AdminBookingTab) ([]entities.Booking, error) {
+func (r *BookingRepository) ListAdminBookings(ctx context.Context, tab entities.AdminBookingTab) ([]entities.Booking, error) {
 	switch tab {
-	case AdminBookingTabApproved:
+	case entities.AdminBookingTabApproved:
 		return r.listBookings(ctx, qBookingListAdminApproved)
-	case AdminBookingTabRejected:
+	case entities.AdminBookingTabRejected:
 		return r.listBookings(ctx, qBookingListAdmin, string(entities.BookingStatusRejected))
 	default:
 		return r.listBookings(ctx, qBookingListAdmin, string(entities.BookingStatusPending))

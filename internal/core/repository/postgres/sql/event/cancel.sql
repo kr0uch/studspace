@@ -1,5 +1,5 @@
 UPDATE events
-SET status = 'cancelled'
+SET status = $2::event_status
 WHERE event_id = $1
 RETURNING
     event_id,

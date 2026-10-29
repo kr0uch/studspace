@@ -103,6 +103,21 @@ func (b Booking) StudentActions(now time.Time) []BookingAction {
 	}
 }
 
+type UserBookingTab string
+
+const (
+	UserBookingTabActive  UserBookingTab = "active"
+	UserBookingTabHistory UserBookingTab = "history"
+)
+
+type AdminBookingTab string
+
+const (
+	AdminBookingTabNew      AdminBookingTab = "new"
+	AdminBookingTabApproved AdminBookingTab = "approved"
+	AdminBookingTabRejected AdminBookingTab = "rejected"
+)
+
 type BookingStatusLog struct {
 	BookingStatusLogID int64
 	BookingID          int64

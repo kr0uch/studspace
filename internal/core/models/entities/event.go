@@ -17,7 +17,6 @@ const (
 type EventStatus string
 
 const (
-	EventStatusDraft     EventStatus = "draft"
 	EventStatusPublished EventStatus = "published"
 	EventStatusCancelled EventStatus = "cancelled"
 )
@@ -68,6 +67,15 @@ type EventView struct {
 	RegisteredCount int
 	IsRegistered    bool
 	IsSubscribed    bool
+}
+
+func (c EventCategory) Valid() bool {
+	switch c {
+	case EventCategoryStudy, EventCategoryCareer, EventCategoryLeisure:
+		return true
+	default:
+		return false
+	}
 }
 
 func (e EventView) SeatsLeft() int {
