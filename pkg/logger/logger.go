@@ -2,7 +2,6 @@ package logger
 
 import (
 	"os"
-	"path/filepath"
 	"time"
 
 	"go.uber.org/zap"
@@ -37,14 +36,9 @@ func NewLogger(cfg LoggerConfig) (Logger, error) {
 	if err != nil {
 		return nil, err
 	}
-	file, err := os.OpenFile(filepath.Join(cfg.LogFilePath, "server.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
-	if err != nil {
-		return nil, err
-	}
-
 	fileCore := zapcore.NewCore(
 		zapcore.NewJSONEncoder(zap.NewDevelopmentEncoderConfig()),
-		zapcore.AddSync(file),
+		zapcore.AddSync(newDailyFile(cfg.LogFilePath)),
 		level,
 	)
 
