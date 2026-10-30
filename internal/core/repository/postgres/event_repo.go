@@ -57,6 +57,14 @@ func (r *EventRepository) ListEventsInRange(ctx context.Context, from, to time.T
 	return result, nil
 }
 
+func (r *EventRepository) ListBusyEventDays(ctx context.Context, from, to time.Time) ([]time.Time, error) {
+	days := make([]time.Time, 0)
+	if err := r.postgresDB.SelectContext(ctx, &days, qEventBusyDays, from, to); err != nil {
+		return nil, wrapErr(err)
+	}
+	return days, nil
+}
+
 func (r *EventRepository) ListOverlappingEvents(ctx context.Context, spaceID int16, startsAt, endsAt time.Time, excludeEventID *int64) ([]entities.Event, error) {
 	var rows []dao.Event
 	if err := r.postgresDB.SelectContext(ctx, &rows, qEventListOverlapping, spaceID, startsAt, endsAt, excludeEventID); err != nil {
@@ -90,6 +98,29 @@ func (r *EventRepository) CreateEvent(ctx context.Context, event entities.Event)
 		event.Description,
 		string(status),
 		event.CreatedBy,
+	)
+	if err != nil {
+		return nil, wrapErr(err)
+	}
+	result := row.ToEntity()
+	return &result, nil
+}
+
+func (r *EventRepository) UpdateEvent(ctx context.Context, event entities.Event) (*entities.Event, error) {
+	var row dao.Event
+	err := r.postgresDB.GetContext(
+		ctx,
+		&row,
+		qEventUpdate,
+		event.EventID,
+		event.Title,
+		event.Organizer,
+		string(event.Category),
+		event.SpaceID,
+		event.StartsAt,
+		event.EndsAt,
+		event.Capacity,
+		event.Description,
 	)
 	if err != nil {
 		return nil, wrapErr(err)
