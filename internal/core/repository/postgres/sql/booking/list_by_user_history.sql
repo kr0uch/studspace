@@ -21,4 +21,6 @@ SELECT
 FROM bookings
 WHERE user_id = $1
   AND NOT (status = 'pending' OR (status = 'approved' AND ends_at > $2))
-ORDER BY starts_at DESC;
+  AND ($3::timestamptz IS NULL OR (starts_at, booking_id) < ($3, $4))
+ORDER BY starts_at DESC, booking_id DESC
+LIMIT $5;

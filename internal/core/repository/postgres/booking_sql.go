@@ -17,6 +17,8 @@ var (
 	qBookingListAdminApproved string
 	//go:embed sql/booking/count_pending_by_user.sql
 	qBookingCountPendingByUser string
+	//go:embed sql/booking/count_by_status.sql
+	qBookingCountByStatus string
 	//go:embed sql/booking/list_overlapping.sql
 	qBookingListOverlapping string
 	//go:embed sql/booking/list_in_range.sql

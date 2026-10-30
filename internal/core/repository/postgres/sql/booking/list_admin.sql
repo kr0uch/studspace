@@ -20,4 +20,6 @@ SELECT
     updated_at
 FROM bookings
 WHERE status = $1::booking_status
-ORDER BY created_at ASC, booking_id ASC;
+  AND ($2::timestamptz IS NULL OR (created_at, booking_id) > ($2, $3))
+ORDER BY created_at ASC, booking_id ASC
+LIMIT $4;

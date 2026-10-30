@@ -50,23 +50,23 @@ func (r *BookingRepository) GetBookingByID(ctx context.Context, bookingID int64)
 	return &result, nil
 }
 
-func (r *BookingRepository) ListUserBookings(ctx context.Context, userID int64, tab entities.UserBookingTab, now time.Time) ([]entities.Booking, error) {
+func (r *BookingRepository) ListUserBookings(ctx context.Context, userID int64, tab entities.UserBookingTab, now time.Time, cursorAt *time.Time, cursorID int64, limit int) ([]entities.Booking, error) {
 	switch tab {
 	case entities.UserBookingTabHistory:
-		return r.listBookings(ctx, qBookingListByUserHistory, userID, now)
+		return r.listBookings(ctx, qBookingListByUserHistory, userID, now, cursorAt, cursorID, pgLimit(limit))
 	default:
-		return r.listBookings(ctx, qBookingListByUserActive, userID, now)
+		return r.listBookings(ctx, qBookingListByUserActive, userID, now, cursorAt, cursorID, pgLimit(limit))
 	}
 }
 
-func (r *BookingRepository) ListAdminBookings(ctx context.Context, tab entities.AdminBookingTab) ([]entities.Booking, error) {
+func (r *BookingRepository) ListAdminBookings(ctx context.Context, tab entities.AdminBookingTab, cursorAt *time.Time, cursorID int64, limit int) ([]entities.Booking, error) {
 	switch tab {
 	case entities.AdminBookingTabApproved:
-		return r.listBookings(ctx, qBookingListAdminApproved)
+		return r.listBookings(ctx, qBookingListAdminApproved, cursorAt, cursorID, pgLimit(limit))
 	case entities.AdminBookingTabRejected:
-		return r.listBookings(ctx, qBookingListAdmin, string(entities.BookingStatusRejected))
+		return r.listBookings(ctx, qBookingListAdmin, string(entities.BookingStatusRejected), cursorAt, cursorID, pgLimit(limit))
 	default:
-		return r.listBookings(ctx, qBookingListAdmin, string(entities.BookingStatusPending))
+		return r.listBookings(ctx, qBookingListAdmin, string(entities.BookingStatusPending), cursorAt, cursorID, pgLimit(limit))
 	}
 }
 
@@ -78,6 +78,21 @@ func (r *BookingRepository) CountPendingBookingsByUser(ctx context.Context, user
 	return count, nil
 }
 
+func (r *BookingRepository) CountBookingsByStatus(ctx context.Context, status entities.BookingStatus) (int, error) {
+	var count int
+	if err := r.postgresDB.GetContext(ctx, &count, qBookingCountByStatus, string(status)); err != nil {
+		return 0, wrapErr(err)
+	}
+	return count, nil
+}
+
+func pgLimit(limit int) any {
+	if limit < 1 {
+		return nil
+	}
+	return limit
+}
+
 func (r *BookingRepository) ListOverlappingBookings(ctx context.Context, spaceID int16, startsAt, endsAt time.Time, excludeBookingID *int64) ([]entities.Booking, error) {
 	return r.listBookings(ctx, qBookingListOverlapping, spaceID, startsAt, endsAt, excludeBookingID)
 }
@@ -86,8 +101,8 @@ func (r *BookingRepository) ListBookingsInRange(ctx context.Context, from, to ti
 	return r.listBookings(ctx, qBookingListInRange, from, to, spaceID)
 }
 
-func (r *BookingRepository) ListBusyBookingDays(ctx context.Context, from, to time.Time) ([]string, error) {
-	days := make([]string, 0)
+func (r *BookingRepository) ListBusyBookingDays(ctx context.Context, from, to time.Time) ([]time.Time, error) {
+	days := make([]time.Time, 0)
 	if err := r.postgresDB.SelectContext(ctx, &days, qBookingBusyDays, from, to); err != nil {
 		return nil, wrapErr(err)
 	}

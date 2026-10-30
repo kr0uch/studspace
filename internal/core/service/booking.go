@@ -10,6 +10,7 @@ import (
 	"github.com/kr0uch/studspace/internal/core/models/entities"
 	"github.com/kr0uch/studspace/internal/core/repository/postgres"
 	"github.com/kr0uch/studspace/pkg/errors"
+	"github.com/kr0uch/studspace/pkg/utils"
 )
 
 const maxPendingBookings = 3
@@ -77,28 +78,61 @@ func (s *BookingService) GetBookingByID(ctx context.Context, actor entities.User
 	return booking, nil
 }
 
-func (s *BookingService) ListUserBookings(ctx context.Context, actor entities.User, userID int64, tab entities.UserBookingTab, now time.Time) ([]entities.Booking, error) {
-	if actor.UserID != userID && !actor.IsAdmin() {
-		return nil, errors.ErrForbidden
+func (s *BookingService) ListUserBookings(ctx context.Context, actor entities.User, in dto.ListUserBookings) ([]entities.Booking, *string, error) {
+	if actor.UserID != in.UserID && !actor.IsAdmin() {
+		return nil, nil, errors.ErrForbidden
 	}
-	switch tab {
+	switch in.Tab {
 	case entities.UserBookingTabActive, entities.UserBookingTabHistory:
 	default:
-		return nil, errors.Validation(map[string]string{"tab": "неизвестная вкладка"})
+		return nil, nil, errors.Validation(map[string]string{"tab": "неизвестная вкладка"})
 	}
-	return s.bookings.ListUserBookings(ctx, userID, tab, now)
+	cursorAt, cursorID, limit, err := listCursor(in.Cursor, in.Limit)
+	if err != nil {
+		return nil, nil, err
+	}
+	rows, err := s.bookings.ListUserBookings(ctx, in.UserID, in.Tab, in.Now, cursorAt, cursorID, fetchLimit(limit))
+	if err != nil {
+		return nil, nil, err
+	}
+	return clipBookingPage(rows, limit, func(booking entities.Booking) (time.Time, int64) {
+		return booking.StartsAt, booking.BookingID
+	})
 }
 
-func (s *BookingService) ListAdminBookings(ctx context.Context, actor entities.User, tab entities.AdminBookingTab) ([]entities.Booking, error) {
+func (s *BookingService) ListAdminBookings(ctx context.Context, actor entities.User, in dto.ListAdminBookings) ([]entities.Booking, *string, error) {
 	if err := requireAdmin(actor); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	switch tab {
+	switch in.Tab {
 	case entities.AdminBookingTabNew, entities.AdminBookingTabApproved, entities.AdminBookingTabRejected:
 	default:
-		return nil, errors.Validation(map[string]string{"tab": "неизвестная вкладка"})
+		return nil, nil, errors.Validation(map[string]string{"tab": "неизвестная вкладка"})
 	}
-	return s.bookings.ListAdminBookings(ctx, tab)
+	cursorAt, cursorID, limit, err := listCursor(in.Cursor, in.Limit)
+	if err != nil {
+		return nil, nil, err
+	}
+	rows, err := s.bookings.ListAdminBookings(ctx, in.Tab, cursorAt, cursorID, fetchLimit(limit))
+	if err != nil {
+		return nil, nil, err
+	}
+	key := func(booking entities.Booking) (time.Time, int64) {
+		return booking.CreatedAt, booking.BookingID
+	}
+	if in.Tab == entities.AdminBookingTabApproved {
+		key = func(booking entities.Booking) (time.Time, int64) {
+			return booking.StartsAt, booking.BookingID
+		}
+	}
+	return clipBookingPage(rows, limit, key)
+}
+
+func (s *BookingService) CountBookingsByStatus(ctx context.Context, actor entities.User, status entities.BookingStatus) (int, error) {
+	if err := requireAdmin(actor); err != nil {
+		return 0, err
+	}
+	return s.bookings.CountBookingsByStatus(ctx, status)
 }
 
 func (s *BookingService) GetSlotOverlaps(ctx context.Context, actor entities.User, in dto.GetSlotOverlaps) (*dto.SlotOverlaps, error) {
@@ -108,12 +142,19 @@ func (s *BookingService) GetSlotOverlaps(ctx context.Context, actor entities.Use
 	return loadSlotOverlaps(ctx, s.bookings, s.events, in.SpaceID, in.StartsAt, in.EndsAt, in.ExcludeBookingID, nil)
 }
 
-func (s *BookingService) ListBusyBookingDays(ctx context.Context, month time.Time) ([]string, error) {
+func (s *BookingService) ListBusyBookingDays(ctx context.Context, month time.Time) ([]time.Time, error) {
 	if month.IsZero() {
 		return nil, errors.Validation(map[string]string{"month": "обязательное поле"})
 	}
-	from, to := monthRange(month)
+	from, to := utils.MonthRange(month)
 	return s.bookings.ListBusyBookingDays(ctx, from, to)
+}
+
+func (s *BookingService) ListBookingsInRange(ctx context.Context, from, to time.Time) ([]entities.Booking, error) {
+	if from.IsZero() || to.IsZero() || !to.After(from) {
+		return nil, errors.Validation(map[string]string{"from": "укажите корректный интервал"})
+	}
+	return s.bookings.ListBookingsInRange(ctx, from, to, nil)
 }
 
 func (s *BookingService) WithdrawBooking(ctx context.Context, userID, bookingID int64, now time.Time) (*entities.Booking, error) {
@@ -224,6 +265,37 @@ func (s *BookingService) validateBookingInput(space entities.Space, startsAt, en
 		return errors.Validation(fields)
 	}
 	return nil
+}
+
+func listCursor(raw string, limit int) (*time.Time, int64, int, error) {
+	if limit < 0 || limit > dto.MaxListLimit {
+		return nil, 0, 0, errors.Validation(map[string]string{"limit": "от 1 до 100"})
+	}
+	if raw == "" {
+		return nil, 0, limit, nil
+	}
+	at, id, err := utils.DecodeCursor(raw)
+	if err != nil {
+		return nil, 0, 0, errors.Validation(map[string]string{"cursor": "некорректный курсор"})
+	}
+	return &at, id, limit, nil
+}
+
+func fetchLimit(limit int) int {
+	if limit < 1 {
+		return 0
+	}
+	return limit + 1
+}
+
+func clipBookingPage(items []entities.Booking, limit int, key func(entities.Booking) (time.Time, int64)) ([]entities.Booking, *string, error) {
+	if limit < 1 || len(items) <= limit {
+		return items, nil, nil
+	}
+	items = items[:limit]
+	at, id := key(items[len(items)-1])
+	cursor := utils.EncodeCursor(at, id)
+	return items, &cursor, nil
 }
 
 func loadSlotOverlaps(ctx context.Context, bookings *postgres.BookingRepository, events *postgres.EventRepository, spaceID int16, startsAt, endsAt time.Time, excludeBookingID, excludeEventID *int64) (*dto.SlotOverlaps, error) {
