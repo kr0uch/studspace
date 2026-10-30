@@ -99,7 +99,7 @@ func (b Booking) StudentActions(now time.Time) []BookingAction {
 	case BookingStatusRejected, BookingStatusCancelled, BookingStatusWithdrawn, BookingStatusCompleted:
 		return []BookingAction{BookingActionRebook}
 	default:
-		return nil
+		return []BookingAction{}
 	}
 }
 

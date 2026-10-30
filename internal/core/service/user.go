@@ -43,6 +43,10 @@ func (s *UserService) GetUserByID(ctx context.Context, userID int64) (*entities.
 	return s.users.GetUserByID(ctx, userID)
 }
 
+func (s *UserService) GetUserByVKUserID(ctx context.Context, vkUserID int64) (*entities.User, error) {
+	return s.users.GetUserByVKUserID(ctx, vkUserID)
+}
+
 func (s *UserService) UpdateUserNotifications(ctx context.Context, in dto.UpdateUserNotifications) (*entities.User, error) {
 	return s.users.UpdateUserNotifications(ctx, in.UserID, in.Allowed)
 }

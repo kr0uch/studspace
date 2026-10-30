@@ -14,14 +14,14 @@ const (
 )
 
 type User struct {
-	UserID               int64
-	VKUserID             int64
-	FirstName            string
-	LastName             string
-	PhotoURL             null.String
-	Role                 UserRole
-	NotificationsAllowed bool
-	CreatedAt            time.Time
+	UserID               int64       `json:"user_id"`
+	VKUserID             int64       `json:"vk_user_id"`
+	FirstName            string      `json:"first_name"`
+	LastName             string      `json:"last_name"`
+	PhotoURL             null.String `json:"photo_url"`
+	Role                 UserRole    `json:"role"`
+	NotificationsAllowed bool        `json:"notifications_allowed"`
+	CreatedAt            time.Time   `json:"-"`
 }
 
 func (u User) IsAdmin() bool {
