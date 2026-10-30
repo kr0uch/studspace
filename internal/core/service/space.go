@@ -11,6 +11,7 @@ import (
 	"github.com/kr0uch/studspace/internal/core/models/entities"
 	"github.com/kr0uch/studspace/internal/core/repository/postgres"
 	"github.com/kr0uch/studspace/pkg/errors"
+	"github.com/kr0uch/studspace/pkg/utils"
 )
 
 type SpaceService struct {
@@ -45,7 +46,7 @@ func (s *SpaceService) GetSpaceAvailability(ctx context.Context, in dto.GetSpace
 		return nil, err
 	}
 
-	from, to := dayRange(in.Date.In(moscow))
+	from, to := utils.DayRange(in.Date.In(utils.Moscow))
 	busy, err := s.busyInRange(ctx, from, to, &space.SpaceID)
 	if err != nil {
 		return nil, err
@@ -65,15 +66,15 @@ func (s *SpaceService) GetSpaceCurrentStatus(ctx context.Context, in dto.GetSpac
 	}
 
 	now := in.Now
-	day := now.In(moscow)
-	from, to := dayRange(day)
-	closeAt := atClock(day, space.CloseTime)
-	openAt := atClock(day, space.OpenTime)
+	day := now.In(utils.Moscow)
+	from, to := utils.DayRange(day)
+	closeAt := utils.AtClock(day, space.CloseTime)
+	openAt := utils.AtClock(day, space.OpenTime)
 	if now.Before(openAt) {
 		return &entities.SpaceNowStatus{State: entities.SpaceStateClosed, Until: null.TimeFrom(openAt)}, nil
 	}
 	if !now.Before(closeAt) {
-		nextOpen := atClock(day.AddDate(0, 0, 1), space.OpenTime)
+		nextOpen := utils.AtClock(day.AddDate(0, 0, 1), space.OpenTime)
 		return &entities.SpaceNowStatus{State: entities.SpaceStateClosed, Until: null.TimeFrom(nextOpen)}, nil
 	}
 

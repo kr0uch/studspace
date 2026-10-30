@@ -9,6 +9,7 @@ import (
 	"github.com/kr0uch/studspace/internal/core/models/entities"
 	"github.com/kr0uch/studspace/internal/core/repository/postgres"
 	"github.com/kr0uch/studspace/pkg/errors"
+	"github.com/kr0uch/studspace/pkg/utils"
 )
 
 type EventService struct {
@@ -34,6 +35,21 @@ func (s *EventService) ListEventViews(ctx context.Context, userID int64, in dto.
 		return nil, errors.Validation(map[string]string{"category": "неизвестная категория"})
 	}
 	return s.events.ListEventViews(ctx, in.From, in.To, userID, in.Category, in.Mine)
+}
+
+func (s *EventService) ListEventsInRange(ctx context.Context, from, to time.Time) ([]entities.Event, error) {
+	if from.IsZero() || to.IsZero() || !to.After(from) {
+		return nil, errors.Validation(map[string]string{"from": "укажите корректный интервал"})
+	}
+	return s.events.ListEventsInRange(ctx, from, to, nil)
+}
+
+func (s *EventService) ListBusyEventDays(ctx context.Context, month time.Time) ([]time.Time, error) {
+	if month.IsZero() {
+		return nil, errors.Validation(map[string]string{"month": "обязательное поле"})
+	}
+	from, to := utils.MonthRange(month)
+	return s.events.ListBusyEventDays(ctx, from, to)
 }
 
 func (s *EventService) RegisterForEvent(ctx context.Context, userID, eventID int64) (*entities.EventView, error) {
@@ -75,31 +91,9 @@ func (s *EventService) CreateEvent(ctx context.Context, actor entities.User, in 
 	if err := requireAdmin(actor); err != nil {
 		return nil, err
 	}
-	space, err := activeSpace(ctx, s.spaces, in.SpaceID)
+	in, err := s.prepareEvent(ctx, in, now)
 	if err != nil {
 		return nil, err
-	}
-	if err := validateSpaceTimeWindow(*space, in.StartsAt, in.EndsAt, now); err != nil {
-		return nil, err
-	}
-	in.Title = strings.TrimSpace(in.Title)
-	in.Organizer = strings.TrimSpace(in.Organizer)
-
-	fields := map[string]string{}
-	if in.Title == "" {
-		fields["title"] = "обязательное поле"
-	}
-	if in.Organizer == "" {
-		fields["organizer"] = "обязательное поле"
-	}
-	if !in.Category.Valid() {
-		fields["category"] = "неизвестная категория"
-	}
-	if in.Capacity < 1 || in.Capacity > space.Capacity {
-		fields["capacity"] = "не больше вместимости помещения"
-	}
-	if len(fields) > 0 {
-		return nil, errors.Validation(fields)
 	}
 
 	overlaps, err := loadSlotOverlaps(ctx, s.bookings, s.events, in.SpaceID, in.StartsAt, in.EndsAt, nil, nil)
@@ -122,6 +116,78 @@ func (s *EventService) CreateEvent(ctx context.Context, actor entities.User, in 
 		Status:      entities.EventStatusPublished,
 		CreatedBy:   actor.UserID,
 	})
+}
+
+func (s *EventService) UpdateEvent(ctx context.Context, actor entities.User, eventID int64, in dto.CreateEvent, now time.Time) (*entities.Event, error) {
+	if err := requireAdmin(actor); err != nil {
+		return nil, err
+	}
+	current, err := s.events.GetEventView(ctx, eventID, actor.UserID)
+	if err != nil {
+		return nil, err
+	}
+	if current.Status != entities.EventStatusPublished {
+		return nil, errors.ErrInvalidTransition
+	}
+
+	in, err = s.prepareEvent(ctx, in, now)
+	if err != nil {
+		return nil, err
+	}
+	if in.Capacity < current.RegisteredCount {
+		return nil, errors.Validation(map[string]string{"capacity": "не меньше числа записавшихся"})
+	}
+
+	exclude := eventID
+	overlaps, err := loadSlotOverlaps(ctx, s.bookings, s.events, in.SpaceID, in.StartsAt, in.EndsAt, nil, &exclude)
+	if err != nil {
+		return nil, err
+	}
+	if overlaps.HardConflict() {
+		return nil, errors.ErrSlotConflict
+	}
+
+	return s.events.UpdateEvent(ctx, entities.Event{
+		EventID:     eventID,
+		Title:       in.Title,
+		Organizer:   in.Organizer,
+		Category:    in.Category,
+		SpaceID:     in.SpaceID,
+		StartsAt:    in.StartsAt,
+		EndsAt:      in.EndsAt,
+		Capacity:    in.Capacity,
+		Description: in.Description,
+	})
+}
+
+func (s *EventService) prepareEvent(ctx context.Context, in dto.CreateEvent, now time.Time) (dto.CreateEvent, error) {
+	space, err := activeSpace(ctx, s.spaces, in.SpaceID)
+	if err != nil {
+		return dto.CreateEvent{}, err
+	}
+	if err := validateSpaceTimeWindow(*space, in.StartsAt, in.EndsAt, now); err != nil {
+		return dto.CreateEvent{}, err
+	}
+	in.Title = strings.TrimSpace(in.Title)
+	in.Organizer = strings.TrimSpace(in.Organizer)
+
+	fields := map[string]string{}
+	if in.Title == "" {
+		fields["title"] = "обязательное поле"
+	}
+	if in.Organizer == "" {
+		fields["organizer"] = "обязательное поле"
+	}
+	if !in.Category.Valid() {
+		fields["category"] = "неизвестная категория"
+	}
+	if in.Capacity < 1 || in.Capacity > space.Capacity {
+		fields["capacity"] = "не больше вместимости помещения"
+	}
+	if len(fields) > 0 {
+		return dto.CreateEvent{}, errors.Validation(fields)
+	}
+	return in, nil
 }
 
 func (s *EventService) CancelEvent(ctx context.Context, actor entities.User, eventID int64) (*entities.Event, error) {

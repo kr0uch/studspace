@@ -21,6 +21,25 @@ type RescheduleBooking struct {
 	EndsAt    time.Time
 }
 
+const (
+	DefaultListLimit = 20
+	MaxListLimit     = 100
+)
+
+type ListUserBookings struct {
+	UserID int64
+	Tab    entities.UserBookingTab
+	Now    time.Time
+	Cursor string
+	Limit  int
+}
+
+type ListAdminBookings struct {
+	Tab    entities.AdminBookingTab
+	Cursor string
+	Limit  int
+}
+
 type GetSlotOverlaps struct {
 	SpaceID          int16
 	StartsAt         time.Time

@@ -1,4 +1,4 @@
-SELECT DISTINCT timezone('Europe/Moscow', starts_at)::date::text AS day
+SELECT DISTINCT timezone('Europe/Moscow', starts_at)::date AS day
 FROM bookings
 WHERE status IN ('pending', 'approved')
   AND starts_at >= $1

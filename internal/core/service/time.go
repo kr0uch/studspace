@@ -5,39 +5,8 @@ import (
 
 	"github.com/kr0uch/studspace/internal/core/models/entities"
 	"github.com/kr0uch/studspace/pkg/errors"
+	"github.com/kr0uch/studspace/pkg/utils"
 )
-
-var moscow *time.Location
-
-func init() {
-	loc, err := time.LoadLocation("Europe/Moscow")
-	if err != nil {
-		loc = time.FixedZone("MSK", 3*3600)
-	}
-	moscow = loc
-}
-
-func dayRange(day time.Time) (time.Time, time.Time) {
-	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, moscow)
-	return start, start.Add(24 * time.Hour)
-}
-
-func monthRange(month time.Time) (time.Time, time.Time) {
-	start := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, moscow)
-	return start, start.AddDate(0, 1, 0)
-}
-
-func clockOf(t time.Time) time.Duration {
-	local := t.In(moscow)
-	return time.Duration(local.Hour())*time.Hour +
-		time.Duration(local.Minute())*time.Minute +
-		time.Duration(local.Second())*time.Second
-}
-
-func atClock(day time.Time, clock time.Duration) time.Time {
-	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, moscow)
-	return start.Add(clock)
-}
 
 func validateSpaceTimeWindow(space entities.Space, startsAt, endsAt, now time.Time) error {
 	fields := map[string]string{}
@@ -48,14 +17,14 @@ func validateSpaceTimeWindow(space entities.Space, startsAt, endsAt, now time.Ti
 		fields["ends_at"] = "окончание должно быть позже начала"
 	}
 
-	startDay := startsAt.In(moscow)
-	endDay := endsAt.In(moscow)
+	startDay := startsAt.In(utils.Moscow)
+	endDay := endsAt.In(utils.Moscow)
 	if startDay.Year() != endDay.Year() || startDay.YearDay() != endDay.YearDay() {
 		fields["ends_at"] = "интервал должен быть в пределах одного дня"
 	}
 
-	startClock := clockOf(startsAt)
-	endClock := clockOf(endsAt)
+	startClock := utils.ClockOf(startsAt)
+	endClock := utils.ClockOf(endsAt)
 	step := time.Duration(space.SlotStepMin) * time.Minute
 	if startClock < space.OpenTime || startClock >= space.CloseTime {
 		fields["starts_at"] = "вне рабочих часов помещения"

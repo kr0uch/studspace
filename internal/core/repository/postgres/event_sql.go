@@ -11,8 +11,12 @@ var (
 	qEventListInRange string
 	//go:embed sql/event/list_overlapping.sql
 	qEventListOverlapping string
+	//go:embed sql/event/busy_days.sql
+	qEventBusyDays string
 	//go:embed sql/event/create.sql
 	qEventCreate string
+	//go:embed sql/event/update.sql
+	qEventUpdate string
 	//go:embed sql/event/cancel.sql
 	qEventCancel string
 	//go:embed sql/event/upsert_registration.sql

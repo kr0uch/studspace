@@ -20,4 +20,6 @@ SELECT
     updated_at
 FROM bookings
 WHERE status IN ('approved', 'cancelled')
-ORDER BY starts_at DESC, booking_id DESC;
+  AND ($1::timestamptz IS NULL OR (starts_at, booking_id) < ($1, $2))
+ORDER BY starts_at DESC, booking_id DESC
+LIMIT $3;
