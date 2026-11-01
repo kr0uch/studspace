@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/guregu/null/v6"
@@ -128,4 +129,37 @@ func TestUserService_UpdateUserNotifications(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, &user, got)
 	repo.AssertExpectations(t)
+}
+
+func TestUserService_UpdateUser(t *testing.T) {
+	ctx := context.Background()
+	user := testStudent()
+	user.FirstName = "Дмитрий"
+	user.LastName = "Казак"
+	user.Patronymic = null.StringFrom("Алексеевич")
+	user.Occupation = null.StringFrom("Студент, 25ВВБ4")
+
+	t.Run("success", func(t *testing.T) {
+		repo := new(mockUserRepository)
+		repo.On("UpdateUser", ctx, int64(1), null.StringFrom("Алексеевич"), null.StringFrom("Студент, 25ВВБ4")).
+			Return(&user, nil)
+
+		got, err := NewUserService(repo).UpdateUser(ctx, dto.UpdateUser{
+			UserID:     1,
+			Patronymic: null.StringFrom(" Алексеевич "),
+			Occupation: null.StringFrom(" Студент, 25ВВБ4 "),
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, &user, got)
+		repo.AssertExpectations(t)
+	})
+
+	t.Run("failure (validation)", func(t *testing.T) {
+		got, err := NewUserService(new(mockUserRepository)).UpdateUser(ctx, dto.UpdateUser{
+			UserID:     1,
+			Occupation: null.StringFrom(strings.Repeat("а", 151)),
+		})
+		assert.ErrorIs(t, err, errors.ErrValidation)
+		assert.Nil(t, got)
+	})
 }

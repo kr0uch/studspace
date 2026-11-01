@@ -14,7 +14,7 @@ import (
 
 func bookingColumns() []string {
 	return []string{
-		"booking_id", "user_id", "space_id", "first_name", "last_name",
+		"booking_id", "user_id", "space_id", "first_name", "last_name", "patronymic", "occupation",
 		"starts_at", "ends_at", "purpose", "people_count", "status",
 		"reject_reason_title", "reject_reason_text", "decided_by", "decided_at",
 		"cancelled_by", "cancelled_at", "rescheduled_from_id", "created_at", "updated_at",
@@ -30,7 +30,7 @@ func TestBookingRepository_GetBookingByID(t *testing.T) {
 		mock.ExpectQuery(matchQuery(qBookingGetByID)).
 			WithArgs(int64(10)).
 			WillReturnRows(sqlmock.NewRows(bookingColumns()).AddRow(
-				int64(10), int64(1), int16(1), "Иван", "Иванов",
+				int64(10), int64(1), int16(1), "Иван", "Иванов", nil, nil,
 				now, now.Add(time.Hour), "учёба", 2, "pending",
 				nil, nil, nil, nil,
 				nil, nil, nil, now, now,

@@ -44,6 +44,14 @@ func (m *mockUserRepository) UpdateUserNotifications(ctx context.Context, userID
 	return args.Get(0).(*entities.User), args.Error(1)
 }
 
+func (m *mockUserRepository) UpdateUser(ctx context.Context, userID int64, patronymic, occupation null.String) (*entities.User, error) {
+	args := m.Called(ctx, userID, patronymic, occupation)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.User), args.Error(1)
+}
+
 func (m *mockUserRepository) ListUsersByIDs(ctx context.Context, userIDs []int64) ([]entities.User, error) {
 	args := m.Called(ctx, userIDs)
 	if args.Get(0) == nil {

@@ -9,6 +9,8 @@ RETURNING
     space_id,
     first_name,
     last_name,
+    patronymic,
+    occupation,
     starts_at,
     ends_at,
     purpose,

@@ -14,6 +14,7 @@ import (
 
 type UserService interface {
 	UpsertUserByVK(ctx context.Context, in dto.UpsertUserByVK) (*entities.User, error)
+	UpdateUser(ctx context.Context, in dto.UpdateUser) (*entities.User, error)
 	UpdateUserNotifications(ctx context.Context, in dto.UpdateUserNotifications) (*entities.User, error)
 }
 
@@ -80,6 +81,43 @@ func (c *UserController) GetMeHandler(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 	return json.NewEncoder(w).Encode(user)
+}
+
+// PatchMeHandler godoc
+// @Summary Редактирование профиля
+// @Description Отчество и должность/статус. Имя и фамилия только из VK (POST /auth/sync).
+// @Tags Пользователь
+// @Accept json
+// @Produce json
+// @Security VKAuth
+// @Param request body api.PatchMeRequest true "профиль"
+// @Success 200 {object} entities.User
+// @Failure 400 {object} errors.ErrorResponse
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 422 {object} errors.ErrorResponse
+// @Failure 404 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /me [patch]
+func (c *UserController) PatchMeHandler(w http.ResponseWriter, r *http.Request) error {
+	user, err := web.GetUserFromCtx(r.Context())
+	if err != nil {
+		return err
+	}
+
+	var in api.PatchMeRequest
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		return errors.ErrBadRequest
+	}
+
+	updated, err := c.userService.UpdateUser(r.Context(), dto.UpdateUser{
+		UserID:     user.UserID,
+		Patronymic: in.Patronymic,
+		Occupation: in.Occupation,
+	})
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(updated)
 }
 
 // PatchNotificationsHandler godoc
