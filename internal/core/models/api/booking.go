@@ -23,7 +23,7 @@ type RescheduleBookingRequest struct {
 }
 
 type RejectBookingRequest struct {
-	ReasonTitle null.String `json:"reason_title"`
+	ReasonTitle null.String `json:"reason_title" swaggertype:"string"`
 	ReasonText  string      `json:"reason_text"`
 }
 
@@ -34,7 +34,7 @@ type BookingSpace struct {
 }
 
 type BookingRejectReason struct {
-	Title null.String `json:"title"`
+	Title null.String `json:"title" swaggertype:"string"`
 	Text  string      `json:"text"`
 }
 

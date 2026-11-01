@@ -18,7 +18,7 @@ type User struct {
 	VKUserID             int64       `json:"vk_user_id"`
 	FirstName            string      `json:"first_name"`
 	LastName             string      `json:"last_name"`
-	PhotoURL             null.String `json:"photo_url"`
+	PhotoURL             null.String `json:"photo_url" swaggertype:"string"`
 	Role                 UserRole    `json:"role"`
 	NotificationsAllowed bool        `json:"notifications_allowed"`
 	CreatedAt            time.Time   `json:"-"`

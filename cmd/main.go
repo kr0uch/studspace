@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kr0uch/studspace/docs"
 	"github.com/kr0uch/studspace/internal/config"
 	"github.com/kr0uch/studspace/internal/core/repository/postgres"
 	"github.com/kr0uch/studspace/internal/core/service"
@@ -16,6 +17,17 @@ import (
 	"github.com/kr0uch/studspace/pkg/vk"
 )
 
+// @title StudSpace API
+// @version 1.0
+// @description Бэкенд VK Mini App: бронь студенческих залов и запись на мероприятия.
+// @host localhost:8080
+// @schemes http
+// @BasePath /api/v1
+//
+// @securityDefinitions.apikey VKAuth
+// @in header
+// @name Authorization
+// @description Подпись launch params. Формат: VK vk_user_id=...&vk_ts=...&sign=...
 func main() {
 	ctx := context.Background()
 
@@ -23,6 +35,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	docs.SwaggerInfo.Host = cfg.ServerConfig.SwaggerConfig.Host
+	docs.SwaggerInfo.Schemes = []string{cfg.ServerConfig.SwaggerConfig.Schema}
+	docs.SwaggerInfo.BasePath = cfg.ServerConfig.Prefix
 
 	zapLogger, err := logger.NewLogger(cfg.LoggerConfig)
 	if err != nil {

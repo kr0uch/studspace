@@ -34,6 +34,17 @@ func NewHomeController(bookingService HomeBookingService, spaceService HomeSpace
 	}
 }
 
+// GetHomeHandler godoc
+// @Summary Главная
+// @Description Сегодняшние активные брони пользователя и статусы залов.
+// @Tags Главная
+// @Produce json
+// @Security VKAuth
+// @Success 200 {object} api.Home
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 404 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /home [get]
 func (c *HomeController) GetHomeHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {

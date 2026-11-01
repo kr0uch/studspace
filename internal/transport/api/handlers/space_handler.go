@@ -25,6 +25,16 @@ func NewSpaceController(spaceService SpaceService) *SpaceController {
 	return &SpaceController{spaceService: spaceService}
 }
 
+// ListSpacesHandler godoc
+// @Summary Список помещений
+// @Description Активные залы.
+// @Tags Помещения
+// @Produce json
+// @Security VKAuth
+// @Success 200 {array} api.Space
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /spaces [get]
 func (c *SpaceController) ListSpacesHandler(w http.ResponseWriter, r *http.Request) error {
 	spaces, err := c.spaceService.ListActiveSpaces(r.Context())
 	if err != nil {
@@ -38,6 +48,20 @@ func (c *SpaceController) ListSpacesHandler(w http.ResponseWriter, r *http.Reque
 	return json.NewEncoder(w).Encode(out)
 }
 
+// GetAvailabilityHandler godoc
+// @Summary Занятость помещения на дату
+// @Description Свободные и занятые интервалы на сутки МСК.
+// @Tags Помещения
+// @Produce json
+// @Security VKAuth
+// @Param id path int true "space_id"
+// @Param date query string true "YYYY-MM-DD"
+// @Success 200 {object} api.SpaceAvailability
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 404 {object} errors.ErrorResponse
+// @Failure 422 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /spaces/{id}/availability [get]
 func (c *SpaceController) GetAvailabilityHandler(w http.ResponseWriter, r *http.Request) error {
 	spaceID, err := parseSpaceID(r.PathValue("id"))
 	if err != nil {

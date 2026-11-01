@@ -35,6 +35,20 @@ func NewEventController(eventService EventService, spaceService EventSpaceServic
 	return &EventController{eventService: eventService, spaceService: spaceService}
 }
 
+// ListEventsHandler godoc
+// @Summary Лента мероприятий
+// @Tags Мероприятия
+// @Produce json
+// @Security VKAuth
+// @Param from query string true "YYYY-MM-DD"
+// @Param to query string true "YYYY-MM-DD"
+// @Param category query string false "study, career, leisure"
+// @Param mine query bool false "только свои"
+// @Success 200 {object} api.EventList
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 422 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /events [get]
 func (c *EventController) ListEventsHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -80,6 +94,18 @@ func (c *EventController) ListEventsHandler(w http.ResponseWriter, r *http.Reque
 	})
 }
 
+// RegisterForEventHandler godoc
+// @Summary Записаться на мероприятие
+// @Tags Мероприятия
+// @Produce json
+// @Security VKAuth
+// @Param id path int true "event_id"
+// @Success 201 {object} api.Event
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 404 {object} errors.ErrorResponse
+// @Failure 409 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /events/{id}/registration [post]
 func (c *EventController) RegisterForEventHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -104,6 +130,17 @@ func (c *EventController) RegisterForEventHandler(w http.ResponseWriter, r *http
 	return json.NewEncoder(w).Encode(out)
 }
 
+// UnregisterFromEventHandler godoc
+// @Summary Отменить запись
+// @Tags Мероприятия
+// @Produce json
+// @Security VKAuth
+// @Param id path int true "event_id"
+// @Success 200 {object} api.Event
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 404 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /events/{id}/registration [delete]
 func (c *EventController) UnregisterFromEventHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -130,6 +167,16 @@ func (c *EventController) UnregisterFromEventHandler(w http.ResponseWriter, r *h
 	return err
 }
 
+// AddWaitlistHandler godoc
+// @Summary Подписаться на лист ожидания
+// @Tags Мероприятия
+// @Security VKAuth
+// @Param id path int true "event_id"
+// @Success 204
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 404 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /events/{id}/waitlist [post]
 func (c *EventController) AddWaitlistHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -149,6 +196,16 @@ func (c *EventController) AddWaitlistHandler(w http.ResponseWriter, r *http.Requ
 	return nil
 }
 
+// RemoveWaitlistHandler godoc
+// @Summary Отписаться от листа ожидания
+// @Tags Мероприятия
+// @Security VKAuth
+// @Param id path int true "event_id"
+// @Success 204
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 404 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /events/{id}/waitlist [delete]
 func (c *EventController) RemoveWaitlistHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
