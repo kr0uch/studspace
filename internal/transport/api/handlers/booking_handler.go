@@ -44,6 +44,21 @@ func NewBookingController(bookingService BookingService, spaceService BookingSpa
 	}
 }
 
+// CreateBookingHandler godoc
+// @Summary Создать заявку на бронь
+// @Tags Брони
+// @Accept json
+// @Produce json
+// @Security VKAuth
+// @Param request body api.CreateBookingRequest true "Слот и цель"
+// @Success 201 {object} api.Booking
+// @Failure 400 {object} errors.ErrorResponse
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 409 {object} errors.ErrorResponse
+// @Failure 422 {object} errors.ErrorResponse
+// @Failure 429 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /bookings [post]
 func (c *BookingController) CreateBookingHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -75,6 +90,19 @@ func (c *BookingController) CreateBookingHandler(w http.ResponseWriter, r *http.
 	return json.NewEncoder(w).Encode(out)
 }
 
+// ListMyBookingsHandler godoc
+// @Summary Мои заявки
+// @Tags Брони
+// @Produce json
+// @Security VKAuth
+// @Param tab query string false "active или history"
+// @Param cursor query string false "курсор"
+// @Param limit query int false "1–100, по умолчанию 20"
+// @Success 200 {object} api.BookingList
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 422 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /bookings/my [get]
 func (c *BookingController) ListMyBookingsHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -110,6 +138,19 @@ func (c *BookingController) ListMyBookingsHandler(w http.ResponseWriter, r *http
 	return json.NewEncoder(w).Encode(api.BookingList{Items: items, NextCursor: nextCursor})
 }
 
+// WithdrawBookingHandler godoc
+// @Summary Отозвать заявку
+// @Tags Брони
+// @Produce json
+// @Security VKAuth
+// @Param id path int true "booking_id"
+// @Success 200 {object} api.Booking
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 403 {object} errors.ErrorResponse
+// @Failure 404 {object} errors.ErrorResponse
+// @Failure 409 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /bookings/{id}/withdraw [post]
 func (c *BookingController) WithdrawBookingHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -134,6 +175,19 @@ func (c *BookingController) WithdrawBookingHandler(w http.ResponseWriter, r *htt
 	return json.NewEncoder(w).Encode(out)
 }
 
+// CancelBookingHandler godoc
+// @Summary Отменить одобренную бронь
+// @Tags Брони
+// @Produce json
+// @Security VKAuth
+// @Param id path int true "booking_id"
+// @Success 200 {object} api.Booking
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 403 {object} errors.ErrorResponse
+// @Failure 404 {object} errors.ErrorResponse
+// @Failure 409 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /bookings/{id}/cancel [post]
 func (c *BookingController) CancelBookingHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -158,6 +212,22 @@ func (c *BookingController) CancelBookingHandler(w http.ResponseWriter, r *http.
 	return json.NewEncoder(w).Encode(out)
 }
 
+// RescheduleBookingHandler godoc
+// @Summary Перенести бронь
+// @Tags Брони
+// @Accept json
+// @Produce json
+// @Security VKAuth
+// @Param id path int true "booking_id"
+// @Param request body api.RescheduleBookingRequest true "Новый слот"
+// @Success 200 {object} api.Booking
+// @Failure 400 {object} errors.ErrorResponse
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 403 {object} errors.ErrorResponse
+// @Failure 409 {object} errors.ErrorResponse
+// @Failure 422 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /bookings/{id}/reschedule [post]
 func (c *BookingController) RescheduleBookingHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {

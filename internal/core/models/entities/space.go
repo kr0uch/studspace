@@ -12,7 +12,7 @@ type Space struct {
 	Name        string        `json:"name"`
 	Kind        string        `json:"kind"`
 	Capacity    int           `json:"capacity"`
-	PhotoURL    null.String   `json:"photo_url"`
+	PhotoURL    null.String   `json:"photo_url" swaggertype:"string"`
 	Color       string        `json:"color"`
 	OpenTime    time.Duration `json:"-"`
 	CloseTime   time.Duration `json:"-"`
@@ -37,5 +37,5 @@ const (
 
 type SpaceNowStatus struct {
 	State SpaceState `json:"state"`
-	Until null.Time  `json:"until"`
+	Until null.Time  `json:"until" swaggertype:"string"`
 }

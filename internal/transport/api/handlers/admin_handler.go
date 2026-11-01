@@ -58,6 +58,20 @@ func NewAdminController(
 	}
 }
 
+// ListAdminBookingsHandler godoc
+// @Summary Админ: список заявок
+// @Tags Админ
+// @Produce json
+// @Security VKAuth
+// @Param tab query string false "new, approved, rejected"
+// @Param cursor query string false "курсор"
+// @Param limit query int false "1–100, по умолчанию 20"
+// @Success 200 {object} api.AdminBookingList
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 403 {object} errors.ErrorResponse
+// @Failure 422 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /admin/bookings [get]
 func (c *AdminController) ListAdminBookingsHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -101,6 +115,18 @@ func (c *AdminController) ListAdminBookingsHandler(w http.ResponseWriter, r *htt
 	})
 }
 
+// ApproveBookingHandler godoc
+// @Summary Админ: одобрить заявку
+// @Tags Админ
+// @Produce json
+// @Security VKAuth
+// @Param id path int true "booking_id"
+// @Success 200 {object} api.AdminBooking
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 403 {object} errors.ErrorResponse
+// @Failure 409 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /admin/bookings/{id}/approve [post]
 func (c *AdminController) ApproveBookingHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -128,6 +154,21 @@ func (c *AdminController) ApproveBookingHandler(w http.ResponseWriter, r *http.R
 	return err
 }
 
+// RejectBookingHandler godoc
+// @Summary Админ: отклонить заявку
+// @Tags Админ
+// @Accept json
+// @Produce json
+// @Security VKAuth
+// @Param id path int true "booking_id"
+// @Param request body api.RejectBookingRequest true "Причина"
+// @Success 200 {object} api.AdminBooking
+// @Failure 400 {object} errors.ErrorResponse
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 403 {object} errors.ErrorResponse
+// @Failure 409 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /admin/bookings/{id}/reject [post]
 func (c *AdminController) RejectBookingHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -163,6 +204,18 @@ func (c *AdminController) RejectBookingHandler(w http.ResponseWriter, r *http.Re
 	return err
 }
 
+// CancelBookingHandler godoc
+// @Summary Админ: отменить бронь
+// @Tags Админ
+// @Produce json
+// @Security VKAuth
+// @Param id path int true "booking_id"
+// @Success 200 {object} api.AdminBooking
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 403 {object} errors.ErrorResponse
+// @Failure 409 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /admin/bookings/{id}/cancel [post]
 func (c *AdminController) CancelBookingHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -190,6 +243,18 @@ func (c *AdminController) CancelBookingHandler(w http.ResponseWriter, r *http.Re
 	return err
 }
 
+// ReturnBookingToReviewHandler godoc
+// @Summary Админ: вернуть на рассмотрение
+// @Tags Админ
+// @Produce json
+// @Security VKAuth
+// @Param id path int true "booking_id"
+// @Success 200 {object} api.AdminBooking
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 403 {object} errors.ErrorResponse
+// @Failure 409 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /admin/bookings/{id}/return-to-review [post]
 func (c *AdminController) ReturnBookingToReviewHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -214,6 +279,21 @@ func (c *AdminController) ReturnBookingToReviewHandler(w http.ResponseWriter, r 
 	return json.NewEncoder(w).Encode(out)
 }
 
+// CreateEventHandler godoc
+// @Summary Админ: создать мероприятие
+// @Tags Админ
+// @Accept json
+// @Produce json
+// @Security VKAuth
+// @Param request body api.CreateEventRequest true "Мероприятие"
+// @Success 201 {object} api.Event
+// @Failure 400 {object} errors.ErrorResponse
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 403 {object} errors.ErrorResponse
+// @Failure 409 {object} errors.ErrorResponse
+// @Failure 422 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /admin/events [post]
 func (c *AdminController) CreateEventHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -248,6 +328,22 @@ func (c *AdminController) CreateEventHandler(w http.ResponseWriter, r *http.Requ
 	return json.NewEncoder(w).Encode(api.NewEvent(*event, spaceName))
 }
 
+// UpdateEventHandler godoc
+// @Summary Админ: изменить мероприятие
+// @Tags Админ
+// @Accept json
+// @Produce json
+// @Security VKAuth
+// @Param id path int true "event_id"
+// @Param request body api.CreateEventRequest true "То же тело, что при создании"
+// @Success 200 {object} api.Event
+// @Failure 400 {object} errors.ErrorResponse
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 403 {object} errors.ErrorResponse
+// @Failure 409 {object} errors.ErrorResponse
+// @Failure 422 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /admin/events/{id} [patch]
 func (c *AdminController) UpdateEventHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -285,6 +381,18 @@ func (c *AdminController) UpdateEventHandler(w http.ResponseWriter, r *http.Requ
 	return json.NewEncoder(w).Encode(api.NewEvent(*event, spaceName))
 }
 
+// CancelEventHandler godoc
+// @Summary Админ: отменить мероприятие
+// @Tags Админ
+// @Produce json
+// @Security VKAuth
+// @Param id path int true "event_id"
+// @Success 200 {object} api.Event
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 403 {object} errors.ErrorResponse
+// @Failure 409 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /admin/events/{id}/cancel [post]
 func (c *AdminController) CancelEventHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {

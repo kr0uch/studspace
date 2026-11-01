@@ -16,7 +16,7 @@ type CreateEventRequest struct {
 	StartsAt    time.Time              `json:"starts_at"`
 	EndsAt      time.Time              `json:"ends_at"`
 	Capacity    int                    `json:"capacity"`
-	Description null.String            `json:"description"`
+	Description null.String            `json:"description" swaggertype:"string"`
 }
 
 type EventSpace struct {
@@ -33,7 +33,7 @@ type Event struct {
 	StartsAt        time.Time               `json:"starts_at"`
 	EndsAt          time.Time               `json:"ends_at"`
 	Capacity        int                     `json:"capacity"`
-	Description     null.String             `json:"description,omitempty"`
+	Description     null.String             `json:"description,omitempty" swaggertype:"string"`
 	Status          entities.EventStatus    `json:"status,omitempty"`
 	RegisteredCount int                     `json:"registered_count,omitempty"`
 	SeatsLeft       *int                    `json:"seats_left,omitempty"`
