@@ -13,6 +13,7 @@ import (
 	"github.com/kr0uch/studspace/internal/transport/api/servers"
 	dbpg "github.com/kr0uch/studspace/pkg/database/postgres"
 	"github.com/kr0uch/studspace/pkg/logger"
+	"github.com/kr0uch/studspace/pkg/vk"
 )
 
 func main() {
@@ -39,10 +40,12 @@ func main() {
 	bookingRepo := postgres.NewBookingRepository(postgresDB)
 	eventRepo := postgres.NewEventRepository(postgresDB)
 
+	notifyRepo := postgres.NewNotifyRepository(vk.NewVKClient(cfg.VK.NotifyToken))
+
 	userService := service.NewUserService(userRepo)
 	spaceService := service.NewSpaceService(spaceRepo, bookingRepo, eventRepo)
-	bookingService := service.NewBookingService(bookingRepo, eventRepo, spaceRepo)
-	eventService := service.NewEventService(eventRepo, bookingRepo, spaceRepo)
+	bookingService := service.NewBookingService(bookingRepo, eventRepo, spaceRepo, userRepo, notifyRepo)
+	eventService := service.NewEventService(eventRepo, bookingRepo, spaceRepo, userRepo, notifyRepo)
 
 	server := servers.NewServer(
 		cfg.ServerConfig,

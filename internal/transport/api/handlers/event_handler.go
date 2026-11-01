@@ -116,15 +116,18 @@ func (c *EventController) UnregisterFromEventHandler(w http.ResponseWriter, r *h
 	}
 
 	view, err := c.eventService.UnregisterFromEvent(r.Context(), user.UserID, eventID)
-	if err != nil {
+	if view == nil {
 		return err
 	}
 
-	out, err := c.eventView(r, *view)
-	if err != nil {
-		return err
+	out, viewErr := c.eventView(r, *view)
+	if viewErr != nil {
+		return viewErr
 	}
-	return json.NewEncoder(w).Encode(out)
+	if encErr := json.NewEncoder(w).Encode(out); encErr != nil {
+		return encErr
+	}
+	return err
 }
 
 func (c *EventController) AddWaitlistHandler(w http.ResponseWriter, r *http.Request) error {

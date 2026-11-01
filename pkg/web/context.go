@@ -10,7 +10,8 @@ import (
 type ctxKey int
 
 const (
-	CtxHttpErrorKey ctxKey = iota
+	ctxHttpErrorKey ctxKey = iota
+	ctxNotifyErrorKey
 	ctxUserKey
 	ctxVKUserIDKey
 )
@@ -39,8 +40,20 @@ func GetVKUserIDFromCtx(ctx context.Context) (int64, error) {
 	return vkUserID, nil
 }
 
+func GetNotifyErrorFromCtx(ctx context.Context) *errors.NotifyError {
+	val := ctx.Value(ctxNotifyErrorKey)
+	if val == nil {
+		return nil
+	}
+	err, ok := val.(*errors.NotifyError)
+	if !ok {
+		return nil
+	}
+	return err
+}
+
 func GetHttpErrorFromCtx(ctx context.Context) *errors.HttpError {
-	val := ctx.Value(CtxHttpErrorKey)
+	val := ctx.Value(ctxHttpErrorKey)
 	if val == nil {
 		return nil
 	}

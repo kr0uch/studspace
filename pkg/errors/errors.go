@@ -73,6 +73,56 @@ func (e *HttpError) Wrap(err error) *HttpError {
 	return &c
 }
 
+type NotifyError struct {
+	err error
+}
+
+func WrapNotify(err error) error {
+	if err == nil {
+		return nil
+	}
+	var n *NotifyError
+	if stderrors.As(err, &n) {
+		return err
+	}
+	return &NotifyError{err: err}
+}
+
+func (e *NotifyError) Error() string {
+	if e == nil || e.err == nil {
+		return ""
+	}
+	return e.err.Error()
+}
+
+func (e *NotifyError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.err
+}
+
+func (e *NotifyError) SetError(err error) {
+	if e == nil || err == nil {
+		return
+	}
+	var n *NotifyError
+	if stderrors.As(err, &n) && n != nil {
+		*e = *n
+		return
+	}
+	e.err = err
+}
+
+func (e *NotifyError) HasError() bool {
+	return e != nil && e.err != nil
+}
+
+func IsNotify(err error) bool {
+	var n *NotifyError
+	return stderrors.As(err, &n)
+}
+
 func ParseHttpError(err error) *HttpError {
 	var val *HttpError
 	if stderrors.As(err, &val) {

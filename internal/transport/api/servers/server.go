@@ -20,7 +20,8 @@ type ServerConfig struct {
 }
 
 type VKConfig struct {
-	AppSecret string `yaml:"app_secret" env:"VK_APP_SECRET" env-required:"true"`
+	AppSecret   string `yaml:"app_secret" env:"VK_APP_SECRET" env-required:"true"`
+	NotifyToken string `yaml:"notify_token" env:"VK_NOTIFY_TOKEN"`
 }
 
 type Server struct {

@@ -11,4 +11,6 @@ var (
 	qUserGetByVKUserID string
 	//go:embed sql/user/user_update_notifications.sql
 	qUserUpdateNotifications string
+	//go:embed sql/user/user_list_by_ids.sql
+	qUserListByIDs string
 )

@@ -114,15 +114,18 @@ func (c *AdminController) ApproveBookingHandler(w http.ResponseWriter, r *http.R
 
 	now := time.Now()
 	booking, err := c.bookingService.ApproveBooking(r.Context(), *user, bookingID, now)
-	if err != nil {
+	if booking == nil {
 		return err
 	}
 
-	out, err := c.adminBookingView(r, *user, *booking, now)
-	if err != nil {
-		return err
+	out, viewErr := c.adminBookingView(r, *user, *booking, now)
+	if viewErr != nil {
+		return viewErr
 	}
-	return json.NewEncoder(w).Encode(out)
+	if encErr := json.NewEncoder(w).Encode(out); encErr != nil {
+		return encErr
+	}
+	return err
 }
 
 func (c *AdminController) RejectBookingHandler(w http.ResponseWriter, r *http.Request) error {
@@ -146,15 +149,18 @@ func (c *AdminController) RejectBookingHandler(w http.ResponseWriter, r *http.Re
 		Title: in.ReasonTitle,
 		Text:  in.ReasonText,
 	}, now)
-	if err != nil {
+	if booking == nil {
 		return err
 	}
 
-	out, err := c.adminBookingView(r, *user, *booking, now)
-	if err != nil {
-		return err
+	out, viewErr := c.adminBookingView(r, *user, *booking, now)
+	if viewErr != nil {
+		return viewErr
 	}
-	return json.NewEncoder(w).Encode(out)
+	if encErr := json.NewEncoder(w).Encode(out); encErr != nil {
+		return encErr
+	}
+	return err
 }
 
 func (c *AdminController) CancelBookingHandler(w http.ResponseWriter, r *http.Request) error {
@@ -170,15 +176,18 @@ func (c *AdminController) CancelBookingHandler(w http.ResponseWriter, r *http.Re
 
 	now := time.Now()
 	booking, err := c.bookingService.CancelBookingByAdmin(r.Context(), *user, bookingID, now)
-	if err != nil {
+	if booking == nil {
 		return err
 	}
 
-	out, err := c.adminBookingView(r, *user, *booking, now)
-	if err != nil {
-		return err
+	out, viewErr := c.adminBookingView(r, *user, *booking, now)
+	if viewErr != nil {
+		return viewErr
 	}
-	return json.NewEncoder(w).Encode(out)
+	if encErr := json.NewEncoder(w).Encode(out); encErr != nil {
+		return encErr
+	}
+	return err
 }
 
 func (c *AdminController) ReturnBookingToReviewHandler(w http.ResponseWriter, r *http.Request) error {

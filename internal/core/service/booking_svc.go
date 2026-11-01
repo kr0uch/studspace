@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	stderrors "errors"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -19,14 +20,24 @@ type BookingService struct {
 	bookings *postgres.BookingRepository
 	events   *postgres.EventRepository
 	spaces   *postgres.SpaceRepository
+	users    *postgres.UserRepository
+	notify   *postgres.NotifyRepository
 }
 
 func NewBookingService(
 	bookings *postgres.BookingRepository,
 	events *postgres.EventRepository,
 	spaces *postgres.SpaceRepository,
+	users *postgres.UserRepository,
+	notify *postgres.NotifyRepository,
 ) *BookingService {
-	return &BookingService{bookings: bookings, events: events, spaces: spaces}
+	return &BookingService{
+		bookings: bookings,
+		events:   events,
+		spaces:   spaces,
+		users:    users,
+		notify:   notify,
+	}
 }
 
 func (s *BookingService) CreateBooking(ctx context.Context, actor entities.User, in dto.CreateBooking, now time.Time) (*entities.Booking, error) {
@@ -212,7 +223,15 @@ func (s *BookingService) ApproveBooking(ctx context.Context, actor entities.User
 	if overlaps.HardConflict() {
 		return nil, errors.ErrSlotConflict
 	}
-	return s.bookings.ApproveBooking(ctx, bookingID, actor.UserID, now)
+	approved, err := s.bookings.ApproveBooking(ctx, bookingID, actor.UserID, now)
+	if err != nil {
+		return nil, err
+	}
+	name, err := s.spaceName(ctx, approved.SpaceID)
+	if err != nil {
+		return approved, errors.WrapNotify(err)
+	}
+	return approved, s.notifyUser(ctx, approved.UserID, bookingApprovedMessage(name, *approved))
 }
 
 func (s *BookingService) RejectBooking(ctx context.Context, actor entities.User, bookingID int64, reason entities.RejectReason, now time.Time) (*entities.Booking, error) {
@@ -222,14 +241,30 @@ func (s *BookingService) RejectBooking(ctx context.Context, actor entities.User,
 	if strings.TrimSpace(reason.Text) == "" {
 		return nil, errors.Validation(map[string]string{"reason_text": "укажите причину"})
 	}
-	return s.bookings.RejectBooking(ctx, bookingID, actor.UserID, now, reason)
+	rejected, err := s.bookings.RejectBooking(ctx, bookingID, actor.UserID, now, reason)
+	if err != nil {
+		return nil, err
+	}
+	name, err := s.spaceName(ctx, rejected.SpaceID)
+	if err != nil {
+		return rejected, errors.WrapNotify(err)
+	}
+	return rejected, s.notifyUser(ctx, rejected.UserID, bookingRejectedMessage(name, *rejected, reason.Text))
 }
 
 func (s *BookingService) CancelBookingByAdmin(ctx context.Context, actor entities.User, bookingID int64, now time.Time) (*entities.Booking, error) {
 	if err := requireAdmin(actor); err != nil {
 		return nil, err
 	}
-	return s.bookings.CancelBooking(ctx, bookingID, actor.UserID, now, entities.CancelActorAdmin)
+	cancelled, err := s.bookings.CancelBooking(ctx, bookingID, actor.UserID, now, entities.CancelActorAdmin)
+	if err != nil {
+		return nil, err
+	}
+	name, err := s.spaceName(ctx, cancelled.SpaceID)
+	if err != nil {
+		return cancelled, errors.WrapNotify(err)
+	}
+	return cancelled, s.notifyUser(ctx, cancelled.UserID, bookingCancelledMessage(name, *cancelled))
 }
 
 func (s *BookingService) ReturnBookingToReview(ctx context.Context, actor entities.User, bookingID int64, now time.Time) (*entities.Booking, error) {
@@ -296,6 +331,35 @@ func clipBookingPage(items []entities.Booking, limit int, key func(entities.Book
 	at, id := key(items[len(items)-1])
 	cursor := utils.EncodeCursor(at, id)
 	return items, &cursor, nil
+}
+
+func (s *BookingService) spaceName(ctx context.Context, spaceID int16) (string, error) {
+	space, err := s.spaces.GetSpaceByID(ctx, spaceID)
+	if err != nil {
+		return "", err
+	}
+	return space.Name, nil
+}
+
+func (s *BookingService) notifyUser(ctx context.Context, userID int64, message string) error {
+	user, err := s.users.GetUserByID(ctx, userID)
+	if err != nil {
+		return errors.WrapNotify(err)
+	}
+	ids := allowedVKUserIDs([]entities.User{*user})
+	if len(ids) == 0 {
+		return nil
+	}
+	denied, err := s.notify.Notify(ctx, ids, message)
+	for _, vkUserID := range denied {
+		if vkUserID != user.VKUserID {
+			continue
+		}
+		if _, dbErr := s.users.UpdateUserNotifications(ctx, user.UserID, false); dbErr != nil {
+			return errors.WrapNotify(stderrors.Join(err, dbErr))
+		}
+	}
+	return errors.WrapNotify(err)
 }
 
 func loadSlotOverlaps(ctx context.Context, bookings *postgres.BookingRepository, events *postgres.EventRepository, spaceID int16, startsAt, endsAt time.Time, excludeBookingID, excludeEventID *int64) (*dto.SlotOverlaps, error) {

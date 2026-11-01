@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	stderrors "errors"
 	"strings"
 	"time"
 
@@ -16,14 +17,24 @@ type EventService struct {
 	events   *postgres.EventRepository
 	bookings *postgres.BookingRepository
 	spaces   *postgres.SpaceRepository
+	users    *postgres.UserRepository
+	notify   *postgres.NotifyRepository
 }
 
 func NewEventService(
 	events *postgres.EventRepository,
 	bookings *postgres.BookingRepository,
 	spaces *postgres.SpaceRepository,
+	users *postgres.UserRepository,
+	notify *postgres.NotifyRepository,
 ) *EventService {
-	return &EventService{events: events, bookings: bookings, spaces: spaces}
+	return &EventService{
+		events:   events,
+		bookings: bookings,
+		spaces:   spaces,
+		users:    users,
+		notify:   notify,
+	}
 }
 
 func (s *EventService) GetEventView(ctx context.Context, userID, eventID int64) (*entities.EventView, error) {
@@ -57,13 +68,44 @@ func (s *EventService) RegisterForEvent(ctx context.Context, userID, eventID int
 }
 
 func (s *EventService) UnregisterFromEvent(ctx context.Context, userID, eventID int64) (*entities.EventView, error) {
-	if _, err := s.events.UnregisterFromEvent(ctx, eventID, userID); err != nil {
+	view, err := s.events.UnregisterFromEvent(ctx, eventID, userID)
+	if err != nil {
 		return nil, err
 	}
-	if _, err := s.events.ClaimEventWaitlist(ctx, eventID); err != nil {
+	claimed, err := s.events.ClaimEventWaitlist(ctx, eventID)
+	if err != nil {
 		return nil, err
 	}
-	return s.events.GetEventView(ctx, eventID, userID)
+	var notifyErr error
+	if len(claimed) > 0 {
+		ids := make([]int64, 0, len(claimed))
+		for _, entry := range claimed {
+			ids = append(ids, entry.UserID)
+		}
+		users, err := s.users.ListUsersByIDs(ctx, ids)
+		if err != nil {
+			notifyErr = errors.WrapNotify(err)
+		} else {
+			denied, sendErr := s.notify.Notify(ctx, allowedVKUserIDs(users), waitlistFreedMessage(view.Title))
+			var dbErr error
+			for _, waitlisted := range users {
+				for _, vkUserID := range denied {
+					if waitlisted.VKUserID != vkUserID {
+						continue
+					}
+					if _, err := s.users.UpdateUserNotifications(ctx, waitlisted.UserID, false); err != nil {
+						dbErr = err
+					}
+				}
+			}
+			notifyErr = errors.WrapNotify(stderrors.Join(sendErr, dbErr))
+		}
+	}
+	out, err := s.events.GetEventView(ctx, eventID, userID)
+	if err != nil {
+		return nil, err
+	}
+	return out, notifyErr
 }
 
 func (s *EventService) AddEventWaitlist(ctx context.Context, userID, eventID int64) error {
