@@ -4,7 +4,9 @@ HTTP API бэкенда VK Mini App: бронирование студенчес
 
 ## Features
 
-- Регистрация пользователя из VK launch params (`POST /auth/sync`)
+- Регистрация пользователя из VK launch params (`POST /auth/sync`); имя и фамилия только из VK
+- Профиль: отчество и должность/статус (`PATCH /me`)
+- Главная: сегодняшние брони и свои мероприятия
 - Брони залов: создание, список, отзыв, отмена, перенос, лимит pending
 - Модерация заявок админом (approve / reject / cancel / return-to-review)
 - Мероприятия: лента, запись, лист ожидания, уведомления VK
@@ -141,8 +143,8 @@ Authorization: VK vk_user_id=...&vk_ts=...&sign=...
 
 | Группа | Методы |
 |---|---|
-| Пользователь | `POST /auth/sync`, `GET /me`, `PATCH /me/notifications` |
-| Главная / залы | `GET /home`, `GET /spaces`, `GET /spaces/{id}/availability` |
+| Пользователь | `POST /auth/sync`, `GET /me`, `PATCH /me`, `PATCH /me/notifications` |
+| Главная / залы | `GET /home` (`today`: брони + свои ивенты), `GET /spaces`, `GET /spaces/{id}/availability` |
 | Расписание | `GET /schedule`, `GET /calendar/busy-days` |
 | Брони | `POST /bookings`, `GET /bookings/my`, withdraw / cancel / reschedule |
 | Мероприятия | `GET /events`, registration, waitlist |
