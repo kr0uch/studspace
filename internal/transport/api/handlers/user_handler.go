@@ -25,6 +25,20 @@ func NewUserController(userService UserService) *UserController {
 	return &UserController{userService: userService}
 }
 
+// SyncHandler godoc
+// @Summary Синхронизация пользователя из VK
+// @Description Создаёт или обновляет профиль по vk_user_id из подписи. Имя берётся из тела, не из users.get.
+// @Tags Пользователь
+// @Accept json
+// @Produce json
+// @Security VKAuth
+// @Param request body api.SyncUserRequest true "Имя, фамилия, фото"
+// @Success 200 {object} entities.User
+// @Failure 400 {object} errors.ErrorResponse
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 422 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /auth/sync [post]
 func (c *UserController) SyncHandler(w http.ResponseWriter, r *http.Request) error {
 	vkUserID, err := web.GetVKUserIDFromCtx(r.Context())
 	if err != nil {
@@ -48,6 +62,18 @@ func (c *UserController) SyncHandler(w http.ResponseWriter, r *http.Request) err
 	return json.NewEncoder(w).Encode(user)
 }
 
+// GetMeHandler godoc
+// @Summary Текущий пользователь
+// @Description Профиль из БД по vk_user_id из подписи.
+// @Tags Пользователь
+// @Produce json
+// @Security VKAuth
+// @Success 200 {object} entities.User
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 403 {object} errors.ErrorResponse
+// @Failure 404 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /me [get]
 func (c *UserController) GetMeHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -56,6 +82,19 @@ func (c *UserController) GetMeHandler(w http.ResponseWriter, r *http.Request) er
 	return json.NewEncoder(w).Encode(user)
 }
 
+// PatchNotificationsHandler godoc
+// @Summary Флаг уведомлений
+// @Description Только notifications_allowed в БД, без отправки в VK.
+// @Tags Пользователь
+// @Accept json
+// @Security VKAuth
+// @Param request body api.PatchNotificationsRequest true "allowed"
+// @Success 204
+// @Failure 400 {object} errors.ErrorResponse
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 404 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /me/notifications [patch]
 func (c *UserController) PatchNotificationsHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {

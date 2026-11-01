@@ -40,6 +40,19 @@ func NewScheduleController(spaceService ScheduleSpaceService, bookingService Sch
 	}
 }
 
+// GetScheduleHandler godoc
+// @Summary Расписание
+// @Description Брони и мероприятия в диапазоне дат. Чужие pending скрыты.
+// @Tags Расписание
+// @Produce json
+// @Security VKAuth
+// @Param from query string true "YYYY-MM-DD"
+// @Param to query string true "YYYY-MM-DD"
+// @Success 200 {object} api.Schedule
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 422 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /schedule [get]
 func (c *ScheduleController) GetScheduleHandler(w http.ResponseWriter, r *http.Request) error {
 	user, err := web.GetUserFromCtx(r.Context())
 	if err != nil {
@@ -110,6 +123,18 @@ func (c *ScheduleController) GetScheduleHandler(w http.ResponseWriter, r *http.R
 	return json.NewEncoder(w).Encode(api.Schedule{Spaces: spaceViews, Items: items})
 }
 
+// GetBusyDaysHandler godoc
+// @Summary Занятые дни календаря
+// @Description Дни месяца с pending/approved бронями или published мероприятиями.
+// @Tags Расписание
+// @Produce json
+// @Security VKAuth
+// @Param month query string true "YYYY-MM"
+// @Success 200 {object} api.BusyDays
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 422 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /calendar/busy-days [get]
 func (c *ScheduleController) GetBusyDaysHandler(w http.ResponseWriter, r *http.Request) error {
 	month, err := parseMonth(r.URL.Query().Get("month"))
 	if err != nil {

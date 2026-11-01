@@ -6,17 +6,25 @@ import (
 	"net/http"
 	"time"
 
+	_ "github.com/kr0uch/studspace/docs"
 	"github.com/kr0uch/studspace/internal/core/service"
 	"github.com/kr0uch/studspace/internal/transport/api/middlewares"
 	"github.com/kr0uch/studspace/internal/transport/api/routers"
 	"github.com/kr0uch/studspace/pkg/logger"
 	"github.com/kr0uch/studspace/pkg/web"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
+type SwaggerConfig struct {
+	Host   string `yaml:"host" env:"SWAGGER_HOST" env-default:"localhost:8080"`
+	Schema string `yaml:"schema" env:"SWAGGER_SCHEMA" env-default:"http"`
+}
+
 type ServerConfig struct {
-	Host   string `yaml:"host" env:"API_HOST" env-default:"0.0.0.0"`
-	Port   int    `yaml:"port" env:"API_PORT" env-default:"8080"`
-	Prefix string `yaml:"prefix" env:"API_PREFIX" env-default:"/api/v1"`
+	Host          string        `yaml:"host" env:"API_HOST" env-default:"0.0.0.0"`
+	Port          int           `yaml:"port" env:"API_PORT" env-default:"8080"`
+	Prefix        string        `yaml:"prefix" env:"API_PREFIX" env-default:"/api/v1"`
+	SwaggerConfig SwaggerConfig `yaml:"swagger"`
 }
 
 type VKConfig struct {
@@ -75,6 +83,7 @@ func NewServer(
 	)
 
 	mainMux := http.NewServeMux()
+	mainMux.Handle(config.Prefix+"/swagger/", httpSwagger.WrapHandler)
 	mainMux.Handle(config.Prefix+"/", http.StripPrefix(config.Prefix, handler))
 
 	server := &http.Server{
