@@ -27,6 +27,10 @@ func LoggerMiddleware(zapLogger logger.Logger) func(http.Handler) http.Handler {
 			}
 
 			httpError := GetHttpErrorFromCtx(r.Context())
+			notifyErr := GetNotifyErrorFromCtx(r.Context())
+			if notifyErr.HasError() {
+				logFields = append(logFields, logger.Error(notifyErr))
+			}
 
 			if httpError.HasError() {
 				logFields = append(
@@ -36,6 +40,11 @@ func LoggerMiddleware(zapLogger logger.Logger) func(http.Handler) http.Handler {
 				)
 
 				reqLogger.With(logFields...).Error("request failed")
+				return
+			}
+
+			if notifyErr.HasError() {
+				reqLogger.With(logFields...).Warn("request completed, notify failed")
 				return
 			}
 

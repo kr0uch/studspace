@@ -10,7 +10,9 @@ import (
 func ErrorMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		httpError := &errors.HttpError{}
-		ctx := context.WithValue(r.Context(), CtxHttpErrorKey, httpError)
+		notifyErr := &errors.NotifyError{}
+		ctx := context.WithValue(r.Context(), ctxHttpErrorKey, httpError)
+		ctx = context.WithValue(ctx, ctxNotifyErrorKey, notifyErr)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 
