@@ -1353,6 +1353,73 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "VKAuth": []
+                    }
+                ],
+                "description": "Отчество и должность/статус. Имя и фамилия только из VK (POST /auth/sync).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Пользователь"
+                ],
+                "summary": "Редактирование профиля",
+                "parameters": [
+                    {
+                        "description": "профиль",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.PatchMeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/entities.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/me/notifications": {
@@ -1614,6 +1681,12 @@ const docTemplate = `{
                 "last_name": {
                     "type": "string"
                 },
+                "occupation": {
+                    "type": "string"
+                },
+                "patronymic": {
+                    "type": "string"
+                },
                 "people_count": {
                     "type": "integer"
                 },
@@ -1710,6 +1783,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "last_name": {
+                    "type": "string"
+                },
+                "occupation": {
+                    "type": "string"
+                },
+                "patronymic": {
                     "type": "string"
                 },
                 "people_count": {
@@ -2016,6 +2095,17 @@ const docTemplate = `{
                 },
                 "space_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "api.PatchMeRequest": {
+            "type": "object",
+            "properties": {
+                "occupation": {
+                    "type": "string"
+                },
+                "patronymic": {
+                    "type": "string"
                 }
             }
         },
@@ -2334,6 +2424,12 @@ const docTemplate = `{
                 },
                 "notifications_allowed": {
                     "type": "boolean"
+                },
+                "occupation": {
+                    "type": "string"
+                },
+                "patronymic": {
+                    "type": "string"
                 },
                 "photo_url": {
                     "type": "string"

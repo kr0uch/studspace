@@ -24,6 +24,10 @@ definitions:
         type: string
       last_name:
         type: string
+      occupation:
+        type: string
+      patronymic:
+        type: string
       people_count:
         type: integer
       purpose:
@@ -87,6 +91,10 @@ definitions:
       first_name:
         type: string
       last_name:
+        type: string
+      occupation:
+        type: string
+      patronymic:
         type: string
       people_count:
         type: integer
@@ -286,6 +294,13 @@ definitions:
         type: string
       space_id:
         type: integer
+    type: object
+  api.PatchMeRequest:
+    properties:
+      occupation:
+        type: string
+      patronymic:
+        type: string
     type: object
   api.PatchNotificationsRequest:
     properties:
@@ -506,6 +521,10 @@ definitions:
         type: string
       notifications_allowed:
         type: boolean
+      occupation:
+        type: string
+      patronymic:
+        type: string
       photo_url:
         type: string
       role:
@@ -1416,6 +1435,49 @@ paths:
       security:
       - VKAuth: []
       summary: Текущий пользователь
+      tags:
+      - Пользователь
+    patch:
+      consumes:
+      - application/json
+      description: Отчество и должность/статус. Имя и фамилия только из VK (POST /auth/sync).
+      parameters:
+      - description: профиль
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.PatchMeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entities.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errors.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/errors.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.ErrorResponse'
+      security:
+      - VKAuth: []
+      summary: Редактирование профиля
       tags:
       - Пользователь
   /me/notifications:

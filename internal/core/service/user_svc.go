@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/guregu/null/v6"
 
@@ -11,11 +12,17 @@ import (
 	"github.com/kr0uch/studspace/pkg/errors"
 )
 
+const (
+	maxUserNameLen       = 100
+	maxUserOccupationLen = 150
+)
+
 type UserRepository interface {
 	UpsertUserByVKID(ctx context.Context, vkUserID int64, firstName, lastName string, photoURL null.String) (*entities.User, error)
 	GetUserByID(ctx context.Context, userID int64) (*entities.User, error)
 	GetUserByVKUserID(ctx context.Context, vkUserID int64) (*entities.User, error)
 	UpdateUserNotifications(ctx context.Context, userID int64, allowed bool) (*entities.User, error)
+	UpdateUser(ctx context.Context, userID int64, patronymic, occupation null.String) (*entities.User, error)
 	ListUsersByIDs(ctx context.Context, userIDs []int64) ([]entities.User, error)
 }
 
@@ -58,4 +65,33 @@ func (s *UserService) GetUserByVKUserID(ctx context.Context, vkUserID int64) (*e
 
 func (s *UserService) UpdateUserNotifications(ctx context.Context, in dto.UpdateUserNotifications) (*entities.User, error) {
 	return s.users.UpdateUserNotifications(ctx, in.UserID, in.Allowed)
+}
+
+func (s *UserService) UpdateUser(ctx context.Context, in dto.UpdateUser) (*entities.User, error) {
+	in.Patronymic = trimOptional(in.Patronymic)
+	in.Occupation = trimOptional(in.Occupation)
+
+	fields := map[string]string{}
+	if in.Patronymic.Valid && utf8.RuneCountInString(in.Patronymic.String) > maxUserNameLen {
+		fields["patronymic"] = "не больше 100 символов"
+	}
+	if in.Occupation.Valid && utf8.RuneCountInString(in.Occupation.String) > maxUserOccupationLen {
+		fields["occupation"] = "не больше 150 символов"
+	}
+	if len(fields) > 0 {
+		return nil, errors.Validation(fields)
+	}
+
+	return s.users.UpdateUser(ctx, in.UserID, in.Patronymic, in.Occupation)
+}
+
+func trimOptional(value null.String) null.String {
+	if !value.Valid {
+		return null.String{}
+	}
+	trimmed := strings.TrimSpace(value.String)
+	if trimmed == "" {
+		return null.String{}
+	}
+	return null.StringFrom(trimmed)
 }

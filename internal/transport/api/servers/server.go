@@ -83,6 +83,9 @@ func NewServer(
 	)
 
 	mainMux := http.NewServeMux()
+	mainMux.HandleFunc(config.Prefix+"/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
 	mainMux.Handle(config.Prefix+"/swagger/", httpSwagger.WrapHandler)
 	mainMux.Handle(config.Prefix+"/", http.StripPrefix(config.Prefix, handler))
 

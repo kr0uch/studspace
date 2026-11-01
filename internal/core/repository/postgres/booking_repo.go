@@ -26,6 +26,8 @@ func (r *BookingRepository) CreateBooking(ctx context.Context, booking entities.
 		booking.SpaceID,
 		booking.FirstName,
 		booking.LastName,
+		booking.Patronymic,
+		booking.Occupation,
 		booking.StartsAt,
 		booking.EndsAt,
 		booking.Purpose,

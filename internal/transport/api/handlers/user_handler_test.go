@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/guregu/null/v6"
 	"github.com/kr0uch/studspace/internal/core/models/api"
 	"github.com/kr0uch/studspace/internal/core/models/dto"
 	"github.com/kr0uch/studspace/internal/core/models/entities"
@@ -29,6 +30,14 @@ func (m *mockUserService) UpsertUserByVK(ctx context.Context, in dto.UpsertUserB
 }
 
 func (m *mockUserService) UpdateUserNotifications(ctx context.Context, in dto.UpdateUserNotifications) (*entities.User, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.User), args.Error(1)
+}
+
+func (m *mockUserService) UpdateUser(ctx context.Context, in dto.UpdateUser) (*entities.User, error) {
 	args := m.Called(ctx, in)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -105,6 +114,31 @@ func TestUserController_SyncHandler(t *testing.T) {
 		err := NewUserController(new(mockUserService)).SyncHandler(httptest.NewRecorder(), req)
 		assert.ErrorIs(t, err, errors.ErrBadRequest)
 	})
+}
+
+func TestUserController_PatchMeHandler(t *testing.T) {
+	user := testHandlerUser()
+	body, _ := json.Marshal(api.PatchMeRequest{
+		Patronymic: null.StringFrom("Алексеевич"),
+		Occupation: null.StringFrom("Студент, 25ВВБ4"),
+	})
+	updated := *user
+	updated.Patronymic = null.StringFrom("Алексеевич")
+	updated.Occupation = null.StringFrom("Студент, 25ВВБ4")
+
+	svc := new(mockUserService)
+	svc.On("UpdateUser", mock.Anything, mock.AnythingOfType("dto.UpdateUser")).Return(&updated, nil)
+
+	req := httptest.NewRequest(http.MethodPatch, "/me", bytes.NewReader(body))
+	req = req.WithContext(web.ContextWithUser(req.Context(), user))
+	w := httptest.NewRecorder()
+
+	err := NewUserController(svc).PatchMeHandler(w, req)
+	assert.NoError(t, err)
+	var got entities.User
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&got))
+	assert.Equal(t, "Алексеевич", got.Patronymic.String)
+	svc.AssertExpectations(t)
 }
 
 func TestUserController_PatchNotificationsHandler(t *testing.T) {
