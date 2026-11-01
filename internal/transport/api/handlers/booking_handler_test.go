@@ -1,0 +1,148 @@
+package handlers
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/kr0uch/studspace/internal/core/models/api"
+	"github.com/kr0uch/studspace/internal/core/models/dto"
+	"github.com/kr0uch/studspace/internal/core/models/entities"
+	"github.com/kr0uch/studspace/pkg/errors"
+	"github.com/kr0uch/studspace/pkg/web"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+)
+
+type mockBookingService struct{ mock.Mock }
+
+func (m *mockBookingService) CreateBooking(ctx context.Context, actor entities.User, in dto.CreateBooking, now time.Time) (*entities.Booking, error) {
+	args := m.Called(ctx, actor, in, now)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.Booking), args.Error(1)
+}
+
+func (m *mockBookingService) GetBookingByID(ctx context.Context, actor entities.User, bookingID int64) (*entities.Booking, error) {
+	args := m.Called(ctx, actor, bookingID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.Booking), args.Error(1)
+}
+
+func (m *mockBookingService) ListUserBookings(ctx context.Context, actor entities.User, in dto.ListUserBookings) ([]entities.Booking, *string, error) {
+	args := m.Called(ctx, actor, in)
+	var cursor *string
+	if args.Get(1) != nil {
+		cursor = args.Get(1).(*string)
+	}
+	if args.Get(0) == nil {
+		return nil, cursor, args.Error(2)
+	}
+	return args.Get(0).([]entities.Booking), cursor, args.Error(2)
+}
+
+func (m *mockBookingService) WithdrawBooking(ctx context.Context, userID, bookingID int64, now time.Time) (*entities.Booking, error) {
+	args := m.Called(ctx, userID, bookingID, now)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.Booking), args.Error(1)
+}
+
+func (m *mockBookingService) CancelBookingByUser(ctx context.Context, userID, bookingID int64, now time.Time) (*entities.Booking, error) {
+	args := m.Called(ctx, userID, bookingID, now)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.Booking), args.Error(1)
+}
+
+func (m *mockBookingService) RescheduleBooking(ctx context.Context, userID int64, in dto.RescheduleBooking, now time.Time) (*entities.Booking, error) {
+	args := m.Called(ctx, userID, in, now)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.Booking), args.Error(1)
+}
+
+type mockBookingSpaceService struct{ mock.Mock }
+
+func (m *mockBookingSpaceService) GetSpaceByID(ctx context.Context, spaceID int16) (*entities.Space, error) {
+	args := m.Called(ctx, spaceID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.Space), args.Error(1)
+}
+
+type mockBookingUserService struct{ mock.Mock }
+
+func (m *mockBookingUserService) GetUserByID(ctx context.Context, userID int64) (*entities.User, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.User), args.Error(1)
+}
+
+func TestBookingController_CreateBookingHandler(t *testing.T) {
+	user := testHandlerUser()
+	starts := time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
+	ends := starts.Add(time.Hour)
+	body, _ := json.Marshal(api.CreateBookingRequest{
+		SpaceID: 1, StartsAt: starts, EndsAt: ends, Purpose: "учёба", PeopleCount: 2,
+	})
+	created := &entities.Booking{BookingID: 10, UserID: 1, SpaceID: 1, StartsAt: starts, EndsAt: ends, Purpose: "учёба", PeopleCount: 2, Status: entities.BookingStatusPending}
+
+	t.Run("success", func(t *testing.T) {
+		bookings := new(mockBookingService)
+		spaces := new(mockBookingSpaceService)
+		bookings.On("CreateBooking", mock.Anything, *user, dto.CreateBooking{
+			SpaceID: 1, StartsAt: starts, EndsAt: ends, Purpose: "учёба", PeopleCount: 2,
+		}, mock.AnythingOfType("time.Time")).Return(created, nil)
+		spaces.On("GetSpaceByID", mock.Anything, int16(1)).Return(&entities.Space{SpaceID: 1, Name: "A"}, nil)
+
+		req := httptest.NewRequest(http.MethodPost, "/bookings", bytes.NewReader(body))
+		req = req.WithContext(web.ContextWithUser(req.Context(), user))
+		w := httptest.NewRecorder()
+		err := NewBookingController(bookings, spaces, new(mockBookingUserService)).CreateBookingHandler(w, req)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusCreated, w.Code)
+		bookings.AssertExpectations(t)
+	})
+
+	t.Run("failure (slot conflict)", func(t *testing.T) {
+		bookings := new(mockBookingService)
+		bookings.On("CreateBooking", mock.Anything, *user, mock.Anything, mock.Anything).
+			Return(nil, errors.ErrSlotConflict)
+
+		req := httptest.NewRequest(http.MethodPost, "/bookings", bytes.NewReader(body))
+		req = req.WithContext(web.ContextWithUser(req.Context(), user))
+		err := NewBookingController(bookings, new(mockBookingSpaceService), new(mockBookingUserService)).CreateBookingHandler(httptest.NewRecorder(), req)
+		assert.ErrorIs(t, err, errors.ErrSlotConflict)
+	})
+}
+
+func TestBookingController_ListMyBookingsHandler(t *testing.T) {
+	user := testHandlerUser()
+	bookings := new(mockBookingService)
+	bookings.On("ListUserBookings", mock.Anything, *user, mock.AnythingOfType("dto.ListUserBookings")).
+		Return([]entities.Booking{}, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/bookings/my?tab=active", nil)
+	req = req.WithContext(web.ContextWithUser(req.Context(), user))
+	w := httptest.NewRecorder()
+	err := NewBookingController(bookings, new(mockBookingSpaceService), new(mockBookingUserService)).ListMyBookingsHandler(w, req)
+	assert.NoError(t, err)
+	var got api.BookingList
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&got))
+	assert.Empty(t, got.Items)
+}

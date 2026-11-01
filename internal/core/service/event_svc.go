@@ -8,25 +8,40 @@ import (
 
 	"github.com/kr0uch/studspace/internal/core/models/dto"
 	"github.com/kr0uch/studspace/internal/core/models/entities"
-	"github.com/kr0uch/studspace/internal/core/repository/postgres"
 	"github.com/kr0uch/studspace/pkg/errors"
 	"github.com/kr0uch/studspace/pkg/utils"
 )
 
+type EventRepository interface {
+	GetEventView(ctx context.Context, eventID, userID int64) (*entities.EventView, error)
+	ListEventViews(ctx context.Context, from, to time.Time, userID int64, category *entities.EventCategory, mine bool) ([]entities.EventView, error)
+	ListEventsInRange(ctx context.Context, from, to time.Time, spaceID *int16) ([]entities.Event, error)
+	ListBusyEventDays(ctx context.Context, from, to time.Time) ([]time.Time, error)
+	ListOverlappingEvents(ctx context.Context, spaceID int16, startsAt, endsAt time.Time, excludeEventID *int64) ([]entities.Event, error)
+	CreateEvent(ctx context.Context, event entities.Event) (*entities.Event, error)
+	UpdateEvent(ctx context.Context, event entities.Event) (*entities.Event, error)
+	CancelEvent(ctx context.Context, eventID int64) (*entities.Event, error)
+	RegisterForEvent(ctx context.Context, eventID, userID int64) (*entities.EventView, error)
+	UnregisterFromEvent(ctx context.Context, eventID, userID int64) (*entities.EventView, error)
+	AddEventWaitlist(ctx context.Context, eventID, userID int64) error
+	RemoveEventWaitlist(ctx context.Context, eventID, userID int64) error
+	ClaimEventWaitlist(ctx context.Context, eventID int64) ([]entities.EventWaitlistEntry, error)
+}
+
 type EventService struct {
-	events   *postgres.EventRepository
-	bookings *postgres.BookingRepository
-	spaces   *postgres.SpaceRepository
-	users    *postgres.UserRepository
-	notify   *postgres.NotifyRepository
+	events   EventRepository
+	bookings BookingRepository
+	spaces   SpaceRepository
+	users    UserRepository
+	notify   NotifyRepository
 }
 
 func NewEventService(
-	events *postgres.EventRepository,
-	bookings *postgres.BookingRepository,
-	spaces *postgres.SpaceRepository,
-	users *postgres.UserRepository,
-	notify *postgres.NotifyRepository,
+	events EventRepository,
+	bookings BookingRepository,
+	spaces SpaceRepository,
+	users UserRepository,
+	notify NotifyRepository,
 ) *EventService {
 	return &EventService{
 		events:   events,

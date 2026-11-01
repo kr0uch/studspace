@@ -1,12 +1,17 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/kr0uch/studspace/internal/core/models/entities"
 	"github.com/kr0uch/studspace/pkg/utils"
 )
+
+type NotifyRepository interface {
+	Notify(ctx context.Context, vkUserIDs []int64, message string) ([]int64, error)
+}
 
 const (
 	msgBookingApproved       = "Заявка на %s %s одобрена."

@@ -9,27 +9,44 @@ import (
 
 	"github.com/kr0uch/studspace/internal/core/models/dto"
 	"github.com/kr0uch/studspace/internal/core/models/entities"
-	"github.com/kr0uch/studspace/internal/core/repository/postgres"
 	"github.com/kr0uch/studspace/pkg/errors"
 	"github.com/kr0uch/studspace/pkg/utils"
 )
 
 const maxPendingBookings = 3
 
+type BookingRepository interface {
+	CreateBooking(ctx context.Context, booking entities.Booking) (*entities.Booking, error)
+	GetBookingByID(ctx context.Context, bookingID int64) (*entities.Booking, error)
+	ListUserBookings(ctx context.Context, userID int64, tab entities.UserBookingTab, now time.Time, cursorAt *time.Time, cursorID int64, limit int) ([]entities.Booking, error)
+	ListAdminBookings(ctx context.Context, tab entities.AdminBookingTab, cursorAt *time.Time, cursorID int64, limit int) ([]entities.Booking, error)
+	CountPendingBookingsByUser(ctx context.Context, userID int64) (int, error)
+	CountBookingsByStatus(ctx context.Context, status entities.BookingStatus) (int, error)
+	ListOverlappingBookings(ctx context.Context, spaceID int16, startsAt, endsAt time.Time, excludeBookingID *int64) ([]entities.Booking, error)
+	ListBookingsInRange(ctx context.Context, from, to time.Time, spaceID *int16) ([]entities.Booking, error)
+	ListBusyBookingDays(ctx context.Context, from, to time.Time) ([]time.Time, error)
+	ApproveBooking(ctx context.Context, bookingID, actorUserID int64, now time.Time) (*entities.Booking, error)
+	RejectBooking(ctx context.Context, bookingID, actorUserID int64, now time.Time, reason entities.RejectReason) (*entities.Booking, error)
+	WithdrawBooking(ctx context.Context, bookingID, actorUserID int64, now time.Time) (*entities.Booking, error)
+	CancelBooking(ctx context.Context, bookingID, actorUserID int64, now time.Time, actor entities.CancelActor) (*entities.Booking, error)
+	ReturnBookingToReview(ctx context.Context, bookingID, actorUserID int64, now time.Time) (*entities.Booking, error)
+	RescheduleBooking(ctx context.Context, bookingID, actorUserID int64, now time.Time, spaceID int16, startsAt, endsAt time.Time) (*entities.Booking, error)
+}
+
 type BookingService struct {
-	bookings *postgres.BookingRepository
-	events   *postgres.EventRepository
-	spaces   *postgres.SpaceRepository
-	users    *postgres.UserRepository
-	notify   *postgres.NotifyRepository
+	bookings BookingRepository
+	events   EventRepository
+	spaces   SpaceRepository
+	users    UserRepository
+	notify   NotifyRepository
 }
 
 func NewBookingService(
-	bookings *postgres.BookingRepository,
-	events *postgres.EventRepository,
-	spaces *postgres.SpaceRepository,
-	users *postgres.UserRepository,
-	notify *postgres.NotifyRepository,
+	bookings BookingRepository,
+	events EventRepository,
+	spaces SpaceRepository,
+	users UserRepository,
+	notify NotifyRepository,
 ) *BookingService {
 	return &BookingService{
 		bookings: bookings,
@@ -362,7 +379,7 @@ func (s *BookingService) notifyUser(ctx context.Context, userID int64, message s
 	return errors.WrapNotify(err)
 }
 
-func loadSlotOverlaps(ctx context.Context, bookings *postgres.BookingRepository, events *postgres.EventRepository, spaceID int16, startsAt, endsAt time.Time, excludeBookingID, excludeEventID *int64) (*dto.SlotOverlaps, error) {
+func loadSlotOverlaps(ctx context.Context, bookings BookingRepository, events EventRepository, spaceID int16, startsAt, endsAt time.Time, excludeBookingID, excludeEventID *int64) (*dto.SlotOverlaps, error) {
 	overlappingBookings, err := bookings.ListOverlappingBookings(ctx, spaceID, startsAt, endsAt, excludeBookingID)
 	if err != nil {
 		return nil, err
