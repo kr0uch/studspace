@@ -1270,7 +1270,7 @@ const docTemplate = `{
                         "VKAuth": []
                     }
                 ],
-                "description": "Сегодняшние активные брони пользователя и статусы залов.",
+                "description": "Сегодняшние активные брони и свои мероприятия, плюс статусы залов.",
                 "produces": [
                     "application/json"
                 ],
@@ -1957,12 +1957,26 @@ const docTemplate = `{
                         "$ref": "#/definitions/api.Space"
                     }
                 },
-                "today_bookings": {
-                    "$ref": "#/definitions/api.HomeTodayBookings"
+                "today": {
+                    "$ref": "#/definitions/api.HomeToday"
                 }
             }
         },
-        "api.HomeBooking": {
+        "api.HomeToday": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.HomeTodayItem"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.HomeTodayItem": {
             "type": "object",
             "properties": {
                 "booking_id": {
@@ -1971,41 +1985,36 @@ const docTemplate = `{
                 "ends_at": {
                     "type": "string"
                 },
+                "event_id": {
+                    "type": "integer"
+                },
                 "purpose": {
                     "type": "string"
                 },
                 "space": {
-                    "$ref": "#/definitions/api.HomeBookingSpace"
+                    "$ref": "#/definitions/api.HomeTodaySpace"
                 },
                 "starts_at": {
                     "type": "string"
                 },
                 "status": {
                     "$ref": "#/definitions/entities.BookingStatus"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },
-        "api.HomeBookingSpace": {
+        "api.HomeTodaySpace": {
             "type": "object",
             "properties": {
                 "name": {
                     "type": "string"
                 },
                 "space_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "api.HomeTodayBookings": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.HomeBooking"
-                    }
-                },
-                "total": {
                     "type": "integer"
                 }
             }

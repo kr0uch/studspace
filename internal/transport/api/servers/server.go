@@ -51,7 +51,7 @@ func NewServer(
 
 	authRouter := routers.NewAuthRouter(userService)
 	userRouter := routers.NewUserRouter(userService)
-	homeRouter := routers.NewHomeRouter(bookingService, spaceService)
+	homeRouter := routers.NewHomeRouter(bookingService, eventService, spaceService)
 	spaceRouter := routers.NewSpaceRouter(spaceService)
 	scheduleRouter := routers.NewScheduleRouter(spaceService, bookingService, eventService)
 	bookingRouter := routers.NewBookingRouter(bookingService, spaceService, userService)

@@ -247,38 +247,44 @@ definitions:
         items:
           $ref: '#/definitions/api.Space'
         type: array
-      today_bookings:
-        $ref: '#/definitions/api.HomeTodayBookings'
+      today:
+        $ref: '#/definitions/api.HomeToday'
     type: object
-  api.HomeBooking:
+  api.HomeToday:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/api.HomeTodayItem'
+        type: array
+      total:
+        type: integer
+    type: object
+  api.HomeTodayItem:
     properties:
       booking_id:
         type: integer
       ends_at:
         type: string
+      event_id:
+        type: integer
       purpose:
         type: string
       space:
-        $ref: '#/definitions/api.HomeBookingSpace'
+        $ref: '#/definitions/api.HomeTodaySpace'
       starts_at:
         type: string
       status:
         $ref: '#/definitions/entities.BookingStatus'
+      title:
+        type: string
+      type:
+        type: string
     type: object
-  api.HomeBookingSpace:
+  api.HomeTodaySpace:
     properties:
       name:
         type: string
       space_id:
-        type: integer
-    type: object
-  api.HomeTodayBookings:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/api.HomeBooking'
-        type: array
-      total:
         type: integer
     type: object
   api.PatchNotificationsRequest:
@@ -1356,7 +1362,7 @@ paths:
       - Мероприятия
   /home:
     get:
-      description: Сегодняшние активные брони пользователя и статусы залов.
+      description: Сегодняшние активные брони и свои мероприятия, плюс статусы залов.
       produces:
       - application/json
       responses:
