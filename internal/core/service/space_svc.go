@@ -9,21 +9,25 @@ import (
 
 	"github.com/kr0uch/studspace/internal/core/models/dto"
 	"github.com/kr0uch/studspace/internal/core/models/entities"
-	"github.com/kr0uch/studspace/internal/core/repository/postgres"
 	"github.com/kr0uch/studspace/pkg/errors"
 	"github.com/kr0uch/studspace/pkg/utils"
 )
 
+type SpaceRepository interface {
+	ListActiveSpaces(ctx context.Context) ([]entities.Space, error)
+	GetSpaceByID(ctx context.Context, spaceID int16) (*entities.Space, error)
+}
+
 type SpaceService struct {
-	spaces   *postgres.SpaceRepository
-	bookings *postgres.BookingRepository
-	events   *postgres.EventRepository
+	spaces   SpaceRepository
+	bookings BookingRepository
+	events   EventRepository
 }
 
 func NewSpaceService(
-	spaces *postgres.SpaceRepository,
-	bookings *postgres.BookingRepository,
-	events *postgres.EventRepository,
+	spaces SpaceRepository,
+	bookings BookingRepository,
+	events EventRepository,
 ) *SpaceService {
 	return &SpaceService{spaces: spaces, bookings: bookings, events: events}
 }
@@ -95,7 +99,7 @@ func (s *SpaceService) GetSpaceCurrentStatus(ctx context.Context, in dto.GetSpac
 	return &entities.SpaceNowStatus{State: entities.SpaceStateFree, Until: null.TimeFrom(closeAt)}, nil
 }
 
-func activeSpace(ctx context.Context, spaces *postgres.SpaceRepository, spaceID int16) (*entities.Space, error) {
+func activeSpace(ctx context.Context, spaces SpaceRepository, spaceID int16) (*entities.Space, error) {
 	space, err := spaces.GetSpaceByID(ctx, spaceID)
 	if err != nil {
 		return nil, err

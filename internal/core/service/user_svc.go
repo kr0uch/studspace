@@ -4,17 +4,26 @@ import (
 	"context"
 	"strings"
 
+	"github.com/guregu/null/v6"
+
 	"github.com/kr0uch/studspace/internal/core/models/dto"
 	"github.com/kr0uch/studspace/internal/core/models/entities"
-	"github.com/kr0uch/studspace/internal/core/repository/postgres"
 	"github.com/kr0uch/studspace/pkg/errors"
 )
 
-type UserService struct {
-	users *postgres.UserRepository
+type UserRepository interface {
+	UpsertUserByVKID(ctx context.Context, vkUserID int64, firstName, lastName string, photoURL null.String) (*entities.User, error)
+	GetUserByID(ctx context.Context, userID int64) (*entities.User, error)
+	GetUserByVKUserID(ctx context.Context, vkUserID int64) (*entities.User, error)
+	UpdateUserNotifications(ctx context.Context, userID int64, allowed bool) (*entities.User, error)
+	ListUsersByIDs(ctx context.Context, userIDs []int64) ([]entities.User, error)
 }
 
-func NewUserService(users *postgres.UserRepository) *UserService {
+type UserService struct {
+	users UserRepository
+}
+
+func NewUserService(users UserRepository) *UserService {
 	return &UserService{users: users}
 }
 
