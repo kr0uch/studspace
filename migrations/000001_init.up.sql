@@ -1,4 +1,3 @@
--- Needed for EXCLUDE constraints that mix scalar equality (space_id =) with range overlap (&&).
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
 CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger AS $$

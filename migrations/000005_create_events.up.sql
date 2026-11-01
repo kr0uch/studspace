@@ -15,8 +15,6 @@ CREATE TABLE events (
 
     CHECK (ends_at > starts_at),
 
-    -- Two published events cannot occupy the same space at the same time.
-    -- Overlap with approved bookings is checked in the approve/create transaction.
     CONSTRAINT events_no_published_overlap EXCLUDE USING gist (
         space_id WITH =,
         period WITH &&
