@@ -3,6 +3,8 @@ CREATE TABLE users (
     vk_user_id            BIGINT      NOT NULL UNIQUE,
     first_name            TEXT        NOT NULL,
     last_name             TEXT        NOT NULL,
+    patronymic            TEXT,
+    occupation            TEXT,
     photo_url             TEXT,
     role                  user_role   NOT NULL DEFAULT 'student',
     notifications_allowed BOOLEAN     NOT NULL DEFAULT false,

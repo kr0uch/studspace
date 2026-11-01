@@ -3,6 +3,8 @@ SELECT
     vk_user_id,
     first_name,
     last_name,
+    patronymic,
+    occupation,
     photo_url,
     role,
     notifications_allowed,

@@ -13,3 +13,9 @@ type UpdateUserNotifications struct {
 	UserID  int64
 	Allowed bool
 }
+
+type UpdateUser struct {
+	UserID     int64
+	Patronymic null.String
+	Occupation null.String
+}

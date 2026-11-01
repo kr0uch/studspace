@@ -4,6 +4,8 @@ CREATE TABLE bookings (
     space_id            SMALLINT       NOT NULL REFERENCES spaces (space_id),
     first_name          TEXT           NOT NULL,
     last_name           TEXT           NOT NULL,
+    patronymic          TEXT,
+    occupation          TEXT,
     starts_at           TIMESTAMPTZ    NOT NULL,
     ends_at             TIMESTAMPTZ    NOT NULL,
     period              TSTZRANGE      GENERATED ALWAYS AS (tstzrange(starts_at, ends_at, '[)')) STORED,

@@ -12,6 +12,7 @@ func NewUserRouter(userService handlers.UserService) *http.ServeMux {
 	router := http.NewServeMux()
 
 	router.HandleFunc("GET /me", web.HandleWithError(controller.GetMeHandler))
+	router.HandleFunc("PATCH /me", web.HandleWithError(controller.PatchMeHandler))
 	router.HandleFunc("PATCH /me/notifications", web.HandleWithError(controller.PatchNotificationsHandler))
 
 	return router

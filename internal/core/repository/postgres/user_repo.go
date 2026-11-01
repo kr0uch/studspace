@@ -42,6 +42,10 @@ func (r *UserRepository) UpdateUserNotifications(ctx context.Context, userID int
 	return r.getUser(ctx, qUserUpdateNotifications, userID, allowed)
 }
 
+func (r *UserRepository) UpdateUser(ctx context.Context, userID int64, patronymic, occupation null.String) (*entities.User, error) {
+	return r.getUser(ctx, qUserUpdate, userID, patronymic, occupation)
+}
+
 func (r *UserRepository) ListUsersByIDs(ctx context.Context, userIDs []int64) ([]entities.User, error) {
 	if len(userIDs) == 0 {
 		return nil, nil

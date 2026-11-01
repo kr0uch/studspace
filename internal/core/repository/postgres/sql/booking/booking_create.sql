@@ -3,17 +3,21 @@ INSERT INTO bookings (
     space_id,
     first_name,
     last_name,
+    patronymic,
+    occupation,
     starts_at,
     ends_at,
     purpose,
     people_count
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING
     booking_id,
     user_id,
     space_id,
     first_name,
     last_name,
+    patronymic,
+    occupation,
     starts_at,
     ends_at,
     purpose,

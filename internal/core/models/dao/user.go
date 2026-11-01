@@ -13,6 +13,8 @@ type User struct {
 	VKUserID             int64       `db:"vk_user_id"`
 	FirstName            string      `db:"first_name"`
 	LastName             string      `db:"last_name"`
+	Patronymic           null.String `db:"patronymic"`
+	Occupation           null.String `db:"occupation"`
 	PhotoURL             null.String `db:"photo_url"`
 	Role                 string      `db:"role"`
 	NotificationsAllowed bool        `db:"notifications_allowed"`
@@ -25,6 +27,8 @@ func (u User) ToEntity() entities.User {
 		VKUserID:             u.VKUserID,
 		FirstName:            u.FirstName,
 		LastName:             u.LastName,
+		Patronymic:           u.Patronymic,
+		Occupation:           u.Occupation,
 		PhotoURL:             u.PhotoURL,
 		Role:                 entities.UserRole(u.Role),
 		NotificationsAllowed: u.NotificationsAllowed,
@@ -38,6 +42,8 @@ func UserFromEntity(e entities.User) User {
 		VKUserID:             e.VKUserID,
 		FirstName:            e.FirstName,
 		LastName:             e.LastName,
+		Patronymic:           e.Patronymic,
+		Occupation:           e.Occupation,
 		PhotoURL:             e.PhotoURL,
 		Role:                 string(e.Role),
 		NotificationsAllowed: e.NotificationsAllowed,

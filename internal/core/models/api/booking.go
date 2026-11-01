@@ -54,6 +54,8 @@ type Booking struct {
 	Space        BookingSpace             `json:"space"`
 	FirstName    string                   `json:"first_name"`
 	LastName     string                   `json:"last_name"`
+	Patronymic   null.String              `json:"patronymic" swaggertype:"string"`
+	Occupation   null.String              `json:"occupation" swaggertype:"string"`
 	StartsAt     time.Time                `json:"starts_at"`
 	EndsAt       time.Time                `json:"ends_at"`
 	Purpose      string                   `json:"purpose"`
@@ -86,6 +88,8 @@ func NewBooking(in entities.Booking, space *entities.Space, decidedBy *entities.
 		Space:       spaceView,
 		FirstName:   in.FirstName,
 		LastName:    in.LastName,
+		Patronymic:  in.Patronymic,
+		Occupation:  in.Occupation,
 		StartsAt:    in.StartsAt,
 		EndsAt:      in.EndsAt,
 		Purpose:     in.Purpose,

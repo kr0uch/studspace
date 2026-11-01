@@ -59,6 +59,8 @@ type Booking struct {
 	SpaceID           int16
 	FirstName         string
 	LastName          string
+	Patronymic        null.String
+	Occupation        null.String
 	StartsAt          time.Time
 	EndsAt            time.Time
 	Purpose           string
