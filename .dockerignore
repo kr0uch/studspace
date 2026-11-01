@@ -1,0 +1,12 @@
+.git
+.cursor
+.github
+.yaml
+.env
+.env.*
+logs
+*.log
+tmp
+data
+*.md
+docs/SPEC.md

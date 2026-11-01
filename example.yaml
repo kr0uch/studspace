@@ -1,0 +1,28 @@
+postgres:
+  postgres_host: localhost
+  postgres_port: "5432"
+  postgres_db: studspace
+  postgres_user: postgres
+  postgres_password: password
+  postgres_sslmode: disable
+  postgres_max_open_conns: 25
+  postgres_max_idle_conns: 10
+  postgres_conn_max_lifetime: 1h
+  postgres_conn_max_idle_time: 15m
+  postgres_connect_timeout: 5s
+
+server:
+  host: localhost
+  port: 8080
+  prefix: /api/v1
+  swagger:
+    host: localhost
+    schema: http
+
+logger:
+  log_path: logs
+  level: info
+
+vk:
+  app_secret: app_secret
+  notify_token: notify_token
