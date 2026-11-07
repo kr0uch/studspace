@@ -16,7 +16,6 @@ type Space struct {
 type BusyInterval struct {
 	StartsAt time.Time `json:"starts_at"`
 	EndsAt   time.Time `json:"ends_at"`
-	Type     string    `json:"type"`
 }
 
 type SpaceAvailability struct {
@@ -34,7 +33,6 @@ func NewSpaceAvailability(in dto.SpaceAvailability) SpaceAvailability {
 		busy = append(busy, BusyInterval{
 			StartsAt: interval.StartsAt,
 			EndsAt:   interval.EndsAt,
-			Type:     string(interval.Kind),
 		})
 	}
 	return SpaceAvailability{

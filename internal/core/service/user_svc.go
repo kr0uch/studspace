@@ -18,7 +18,7 @@ const (
 )
 
 type UserRepository interface {
-	UpsertUserByVKID(ctx context.Context, vkUserID int64, firstName, lastName string, photoURL null.String) (*entities.User, error)
+	UpsertUserByVKID(ctx context.Context, vkUserID int64, firstName, lastName string, photoURL null.String, role entities.UserRole) (*entities.User, error)
 	GetUserByID(ctx context.Context, userID int64) (*entities.User, error)
 	GetUserByVKUserID(ctx context.Context, vkUserID int64) (*entities.User, error)
 	UpdateUserNotifications(ctx context.Context, userID int64, allowed bool) (*entities.User, error)
@@ -27,11 +27,12 @@ type UserRepository interface {
 }
 
 type UserService struct {
-	users UserRepository
+	users    UserRepository
+	adminIDs map[int64]struct{}
 }
 
-func NewUserService(users UserRepository) *UserService {
-	return &UserService{users: users}
+func NewUserService(users UserRepository, adminIDs map[int64]struct{}) *UserService {
+	return &UserService{users: users, adminIDs: adminIDs}
 }
 
 func (s *UserService) UpsertUserByVK(ctx context.Context, in dto.UpsertUserByVK) (*entities.User, error) {
@@ -52,7 +53,11 @@ func (s *UserService) UpsertUserByVK(ctx context.Context, in dto.UpsertUserByVK)
 		return nil, errors.Validation(fields)
 	}
 
-	return s.users.UpsertUserByVKID(ctx, in.VKUserID, in.FirstName, in.LastName, in.PhotoURL)
+	role := entities.UserRoleStudent
+	if _, ok := s.adminIDs[in.VKUserID]; ok {
+		role = entities.UserRoleAdmin
+	}
+	return s.users.UpsertUserByVKID(ctx, in.VKUserID, in.FirstName, in.LastName, in.PhotoURL, role)
 }
 
 func (s *UserService) GetUserByID(ctx context.Context, userID int64) (*entities.User, error) {

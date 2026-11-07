@@ -20,9 +20,9 @@ func NewUserRepository(postgresDB *dbpg.PostgresDB) *UserRepository {
 	return &UserRepository{postgresDB: postgresDB}
 }
 
-func (r *UserRepository) UpsertUserByVKID(ctx context.Context, vkUserID int64, firstName, lastName string, photoURL null.String) (*entities.User, error) {
+func (r *UserRepository) UpsertUserByVKID(ctx context.Context, vkUserID int64, firstName, lastName string, photoURL null.String, role entities.UserRole) (*entities.User, error) {
 	var row dao.User
-	err := r.postgresDB.GetContext(ctx, &row, qUserUpsert, vkUserID, firstName, lastName, photoURL, string(entities.UserRoleStudent))
+	err := r.postgresDB.GetContext(ctx, &row, qUserUpsert, vkUserID, firstName, lastName, photoURL, string(role))
 	if err != nil {
 		return nil, wrapErr(err)
 	}

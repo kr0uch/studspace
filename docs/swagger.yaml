@@ -34,12 +34,16 @@ definitions:
         type: string
       reject_reason:
         $ref: '#/definitions/api.BookingRejectReason'
+      rescheduled_from_id:
+        type: integer
       space:
         $ref: '#/definitions/api.BookingSpace'
       starts_at:
         type: string
       status:
         $ref: '#/definitions/entities.BookingStatus'
+      title:
+        type: string
       user:
         $ref: '#/definitions/entities.User'
     type: object
@@ -102,12 +106,16 @@ definitions:
         type: string
       reject_reason:
         $ref: '#/definitions/api.BookingRejectReason'
+      rescheduled_from_id:
+        type: integer
       space:
         $ref: '#/definitions/api.BookingSpace'
       starts_at:
         type: string
       status:
         $ref: '#/definitions/entities.BookingStatus'
+      title:
+        type: string
     type: object
   api.BookingDecision:
     properties:
@@ -121,6 +129,17 @@ definitions:
       first_name:
         type: string
       user_id:
+        type: integer
+    type: object
+  api.BookingFeed:
+    properties:
+      featured:
+        $ref: '#/definitions/api.Booking'
+      items:
+        items:
+          $ref: '#/definitions/api.Booking'
+        type: array
+      week_total:
         type: integer
     type: object
   api.BookingList:
@@ -163,8 +182,6 @@ definitions:
         type: string
       starts_at:
         type: string
-      type:
-        type: string
     type: object
   api.CreateBookingRequest:
     properties:
@@ -178,76 +195,8 @@ definitions:
         type: integer
       starts_at:
         type: string
-    type: object
-  api.CreateEventRequest:
-    properties:
-      capacity:
-        type: integer
-      category:
-        $ref: '#/definitions/entities.EventCategory'
-      description:
-        type: string
-      ends_at:
-        type: string
-      organizer:
-        type: string
-      space_id:
-        type: integer
-      starts_at:
-        type: string
       title:
         type: string
-    type: object
-  api.Event:
-    properties:
-      capacity:
-        type: integer
-      category:
-        $ref: '#/definitions/entities.EventCategory'
-      description:
-        type: string
-      ends_at:
-        type: string
-      event_id:
-        type: integer
-      is_registered:
-        type: boolean
-      is_subscribed:
-        type: boolean
-      organizer:
-        type: string
-      registered_count:
-        type: integer
-      seats_left:
-        type: integer
-      space:
-        $ref: '#/definitions/api.EventSpace'
-      starts_at:
-        type: string
-      state:
-        $ref: '#/definitions/entities.EventUserState'
-      status:
-        $ref: '#/definitions/entities.EventStatus'
-      title:
-        type: string
-    type: object
-  api.EventList:
-    properties:
-      featured:
-        $ref: '#/definitions/api.Event'
-      items:
-        items:
-          $ref: '#/definitions/api.Event'
-        type: array
-      week_total:
-        type: integer
-    type: object
-  api.EventSpace:
-    properties:
-      name:
-        type: string
-      space_id:
-        type: integer
     type: object
   api.Home:
     properties:
@@ -273,8 +222,6 @@ definitions:
         type: integer
       ends_at:
         type: string
-      event_id:
-        type: integer
       purpose:
         type: string
       space:
@@ -284,8 +231,6 @@ definitions:
       status:
         $ref: '#/definitions/entities.BookingStatus'
       title:
-        type: string
-      type:
         type: string
     type: object
   api.HomeTodaySpace:
@@ -340,12 +285,8 @@ definitions:
         type: integer
       ends_at:
         type: string
-      event_id:
-        type: integer
       is_mine:
         type: boolean
-      organizer:
-        type: string
       owner_name:
         type: string
       space_id:
@@ -355,8 +296,6 @@ definitions:
       status:
         $ref: '#/definitions/entities.BookingStatus'
       title:
-        type: string
-      type:
         type: string
     type: object
   api.ScheduleSpace:
@@ -448,6 +387,7 @@ definitions:
     - cancelled
     - withdrawn
     - completed
+    - expired
     type: string
     x-enum-varnames:
     - BookingStatusPending
@@ -456,6 +396,7 @@ definitions:
     - BookingStatusCancelled
     - BookingStatusWithdrawn
     - BookingStatusCompleted
+    - BookingStatusExpired
   entities.CancelActor:
     enum:
     - user
@@ -464,38 +405,6 @@ definitions:
     x-enum-varnames:
     - CancelActorUser
     - CancelActorAdmin
-  entities.EventCategory:
-    enum:
-    - study
-    - career
-    - leisure
-    type: string
-    x-enum-varnames:
-    - EventCategoryStudy
-    - EventCategoryCareer
-    - EventCategoryLeisure
-  entities.EventStatus:
-    enum:
-    - published
-    - cancelled
-    type: string
-    x-enum-varnames:
-    - EventStatusPublished
-    - EventStatusCancelled
-  entities.EventUserState:
-    enum:
-    - available
-    - few_left
-    - full
-    - registered
-    - past
-    type: string
-    x-enum-varnames:
-    - EventUserStateAvailable
-    - EventUserStateFewLeft
-    - EventUserStateFull
-    - EventUserStateRegistered
-    - EventUserStatePast
   entities.SpaceNowStatus:
     properties:
       state:
@@ -550,7 +459,6 @@ definitions:
     - NOT_FOUND
     - SLOT_CONFLICT
     - INVALID_TRANSITION
-    - EVENT_FULL
     - VALIDATION_ERROR
     - TOO_MANY_PENDING
     - INTERNAL
@@ -562,7 +470,6 @@ definitions:
     - CodeNotFound
     - CodeSlotConflict
     - CodeInvalidTransition
-    - CodeEventFull
     - CodeValidation
     - CodeTooManyPending
     - CodeInternal
@@ -582,7 +489,7 @@ definitions:
 host: localhost:8080
 info:
   contact: {}
-  description: 'Бэкенд VK Mini App: бронь студенческих залов и запись на мероприятия.'
+  description: 'Бэкенд VK Mini App: бронь студенческих залов.'
   title: StudSpace API
   version: "1.0"
 paths:
@@ -785,147 +692,13 @@ paths:
       summary: 'Админ: вернуть на рассмотрение'
       tags:
       - Админ
-  /admin/events:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Мероприятие
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.CreateEventRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/api.Event'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-      security:
-      - VKAuth: []
-      summary: 'Админ: создать мероприятие'
-      tags:
-      - Админ
-  /admin/events/{id}:
-    patch:
-      consumes:
-      - application/json
-      parameters:
-      - description: event_id
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: То же тело, что при создании
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.CreateEventRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.Event'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-      security:
-      - VKAuth: []
-      summary: 'Админ: изменить мероприятие'
-      tags:
-      - Админ
-  /admin/events/{id}/cancel:
-    post:
-      parameters:
-      - description: event_id
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.Event'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-      security:
-      - VKAuth: []
-      summary: 'Админ: отменить мероприятие'
-      tags:
-      - Админ
   /auth/sync:
     post:
       consumes:
       - application/json
       description: Создаёт или обновляет профиль по vk_user_id из подписи. Имя берётся
-        из тела, не из users.get.
+        из тела, не из users.get. VK ID из admins.txt получает роль admin, остальные
+        — student.
       parameters:
       - description: Имя, фамилия, фото
         in: body
@@ -962,11 +735,49 @@ paths:
       tags:
       - Пользователь
   /bookings:
+    get:
+      description: Одобренные брони в диапазоне дат. featured — ближайшая сегодняшняя,
+        которая ещё не закончилась.
+      parameters:
+      - description: YYYY-MM-DD
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: YYYY-MM-DD
+        in: query
+        name: to
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.BookingFeed'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/errors.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.ErrorResponse'
+      security:
+      - VKAuth: []
+      summary: Лента броней
+      tags:
+      - Брони
     post:
       consumes:
       - application/json
       parameters:
-      - description: Слот и цель
+      - description: Слот, название и цель
         in: body
         name: request
         required: true
@@ -1052,6 +863,8 @@ paths:
     post:
       consumes:
       - application/json
+      description: Новая заявка со ссылкой на одобренную бронь. Старый слот сохраняется,
+        пока перенос не одобрят. Отказ его не снимает.
       parameters:
       - description: booking_id
         in: path
@@ -1181,7 +994,7 @@ paths:
       - Брони
   /calendar/busy-days:
     get:
-      description: Дни месяца с pending/approved бронями или published мероприятиями.
+      description: Дни месяца с pending или approved бронями.
       parameters:
       - description: YYYY-MM
         in: query
@@ -1212,176 +1025,9 @@ paths:
       summary: Занятые дни календаря
       tags:
       - Расписание
-  /events:
-    get:
-      parameters:
-      - description: YYYY-MM-DD
-        in: query
-        name: from
-        required: true
-        type: string
-      - description: YYYY-MM-DD
-        in: query
-        name: to
-        required: true
-        type: string
-      - description: study, career, leisure
-        in: query
-        name: category
-        type: string
-      - description: только свои
-        in: query
-        name: mine
-        type: boolean
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.EventList'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-      security:
-      - VKAuth: []
-      summary: Лента мероприятий
-      tags:
-      - Мероприятия
-  /events/{id}/registration:
-    delete:
-      parameters:
-      - description: event_id
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.Event'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-      security:
-      - VKAuth: []
-      summary: Отменить запись
-      tags:
-      - Мероприятия
-    post:
-      parameters:
-      - description: event_id
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/api.Event'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-      security:
-      - VKAuth: []
-      summary: Записаться на мероприятие
-      tags:
-      - Мероприятия
-  /events/{id}/waitlist:
-    delete:
-      parameters:
-      - description: event_id
-        in: path
-        name: id
-        required: true
-        type: integer
-      responses:
-        "204":
-          description: No Content
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-      security:
-      - VKAuth: []
-      summary: Отписаться от листа ожидания
-      tags:
-      - Мероприятия
-    post:
-      parameters:
-      - description: event_id
-        in: path
-        name: id
-        required: true
-        type: integer
-      responses:
-        "204":
-          description: No Content
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/errors.ErrorResponse'
-      security:
-      - VKAuth: []
-      summary: Подписаться на лист ожидания
-      tags:
-      - Мероприятия
   /home:
     get:
-      description: Сегодняшние активные брони и свои мероприятия, плюс статусы залов.
+      description: Сегодняшние активные брони плюс статусы залов.
       produces:
       - application/json
       responses:
@@ -1518,7 +1164,7 @@ paths:
       - Пользователь
   /schedule:
     get:
-      description: Брони и мероприятия в диапазоне дат. Чужие pending скрыты.
+      description: 'Брони в диапазоне дат: свои и чужие pending и approved.'
       parameters:
       - description: YYYY-MM-DD
         in: query

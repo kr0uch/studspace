@@ -50,6 +50,7 @@ services:
       TZ: Europe/Moscow
     volumes:
       - .yaml:/app/.yaml:ro
+      - ./admins.txt:/app/admins.txt:ro
       - ./logs:/app/logs
     networks:
       - app-network

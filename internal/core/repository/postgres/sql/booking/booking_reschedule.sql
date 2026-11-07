@@ -1,14 +1,33 @@
-UPDATE bookings
-SET space_id = $2,
-    starts_at = $3,
-    ends_at = $4,
-    status = 'pending',
-    decided_by = NULL,
-    decided_at = NULL,
-    reject_reason_title = NULL,
-    reject_reason_text = NULL,
-    cancelled_by = NULL,
-    cancelled_at = NULL
+INSERT INTO bookings (
+    user_id,
+    space_id,
+    first_name,
+    last_name,
+    patronymic,
+    occupation,
+    title,
+    starts_at,
+    ends_at,
+    purpose,
+    people_count,
+    status,
+    rescheduled_from_id
+)
+SELECT
+    user_id,
+    $2,
+    first_name,
+    last_name,
+    patronymic,
+    occupation,
+    title,
+    $3,
+    $4,
+    purpose,
+    people_count,
+    'pending',
+    booking_id
+FROM bookings
 WHERE booking_id = $1
 RETURNING
     booking_id,
@@ -18,6 +37,7 @@ RETURNING
     last_name,
     patronymic,
     occupation,
+    title,
     starts_at,
     ends_at,
     purpose,

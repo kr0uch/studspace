@@ -21,6 +21,7 @@ vendor/
 # Env / secrets
 .yaml
 .env
+admins.txt
 .env.local
 .env.*.local
 secrets.xml

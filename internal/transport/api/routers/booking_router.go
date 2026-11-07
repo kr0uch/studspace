@@ -12,6 +12,7 @@ func NewBookingRouter(bookingService handlers.BookingService, spaceService handl
 	router := http.NewServeMux()
 
 	router.HandleFunc("POST /bookings", web.HandleWithError(controller.CreateBookingHandler))
+	router.HandleFunc("GET /bookings", web.HandleWithError(controller.ListBookingsHandler))
 	router.HandleFunc("GET /bookings/my", web.HandleWithError(controller.ListMyBookingsHandler))
 	router.HandleFunc("POST /bookings/{id}/withdraw", web.HandleWithError(controller.WithdrawBookingHandler))
 	router.HandleFunc("POST /bookings/{id}/cancel", web.HandleWithError(controller.CancelBookingHandler))

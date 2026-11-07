@@ -1,5 +1,3 @@
-DROP TYPE IF EXISTS event_status;
-DROP TYPE IF EXISTS event_category;
 DROP TYPE IF EXISTS cancel_actor;
 DROP TYPE IF EXISTS booking_status;
 DROP TYPE IF EXISTS user_role;

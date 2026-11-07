@@ -15,6 +15,7 @@ const (
 	BookingStatusCancelled BookingStatus = "cancelled"
 	BookingStatusWithdrawn BookingStatus = "withdrawn"
 	BookingStatusCompleted BookingStatus = "completed"
+	BookingStatusExpired   BookingStatus = "expired"
 )
 
 var bookingTransitions = map[BookingStatus][]BookingStatus{
@@ -61,6 +62,7 @@ type Booking struct {
 	LastName          string
 	Patronymic        null.String
 	Occupation        null.String
+	Title             string
 	StartsAt          time.Time
 	EndsAt            time.Time
 	Purpose           string
@@ -80,6 +82,9 @@ func (b Booking) CurrentStatus(now time.Time) BookingStatus {
 	if b.Status == BookingStatusApproved && !b.EndsAt.After(now) {
 		return BookingStatusCompleted
 	}
+	if b.Status == BookingStatusPending && !b.StartsAt.After(now) {
+		return BookingStatusExpired
+	}
 	return b.Status
 }
 
@@ -98,7 +103,7 @@ func (b Booking) StudentActions(now time.Time) []BookingAction {
 		return []BookingAction{BookingActionWithdraw}
 	case BookingStatusApproved:
 		return []BookingAction{BookingActionReschedule, BookingActionCancel}
-	case BookingStatusRejected, BookingStatusCancelled, BookingStatusWithdrawn, BookingStatusCompleted:
+	case BookingStatusRejected, BookingStatusCancelled, BookingStatusWithdrawn, BookingStatusCompleted, BookingStatusExpired:
 		return []BookingAction{BookingActionRebook}
 	default:
 		return []BookingAction{}

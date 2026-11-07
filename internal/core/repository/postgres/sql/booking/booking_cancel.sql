@@ -11,6 +11,7 @@ RETURNING
     last_name,
     patronymic,
     occupation,
+    title,
     starts_at,
     ends_at,
     purpose,

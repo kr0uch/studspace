@@ -6,24 +6,24 @@ import (
 	"net/http"
 	"time"
 
-	_ "github.com/kr0uch/studspace/docs"
 	"github.com/kr0uch/studspace/internal/core/service"
 	"github.com/kr0uch/studspace/internal/transport/api/middlewares"
 	"github.com/kr0uch/studspace/internal/transport/api/routers"
 	"github.com/kr0uch/studspace/pkg/logger"
 	"github.com/kr0uch/studspace/pkg/web"
-	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type SwaggerConfig struct {
-	Host   string `yaml:"host" env:"SWAGGER_HOST" env-default:"localhost:8080"`
-	Schema string `yaml:"schema" env:"SWAGGER_SCHEMA" env-default:"http"`
+	Enabled bool   `yaml:"enabled" env:"SWAGGER_ENABLED" env-default:"false"`
+	Host    string `yaml:"host" env:"SWAGGER_HOST" env-default:"localhost:8080"`
+	Schema  string `yaml:"schema" env:"SWAGGER_SCHEMA" env-default:"http"`
 }
 
 type ServerConfig struct {
 	Host          string        `yaml:"host" env:"API_HOST" env-default:"0.0.0.0"`
 	Port          int           `yaml:"port" env:"API_PORT" env-default:"8080"`
 	Prefix        string        `yaml:"prefix" env:"API_PREFIX" env-default:"/api/v1"`
+	CORSOrigins   []string      `yaml:"cors_origins" env:"CORS_ORIGINS" env-separator:","`
 	SwaggerConfig SwaggerConfig `yaml:"swagger"`
 }
 
@@ -31,6 +31,14 @@ type VKConfig struct {
 	AppSecret   string `yaml:"app_secret" env:"VK_APP_SECRET" env-required:"true"`
 	NotifyToken string `yaml:"notify_token" env:"VK_NOTIFY_TOKEN"`
 }
+
+const (
+	readHeaderTimeout = 5 * time.Second
+	readTimeout       = 10 * time.Second
+	writeTimeout      = 30 * time.Second
+	idleTimeout       = 120 * time.Second
+	shutdownTimeout   = 30 * time.Second
+)
 
 type Server struct {
 	config ServerConfig
@@ -45,18 +53,16 @@ func NewServer(
 	userService *service.UserService,
 	spaceService *service.SpaceService,
 	bookingService *service.BookingService,
-	eventService *service.EventService,
 ) *Server {
 	vk := middlewares.NewVKAuth(vkConfig.AppSecret, userService)
 
 	authRouter := routers.NewAuthRouter(userService)
 	userRouter := routers.NewUserRouter(userService)
-	homeRouter := routers.NewHomeRouter(bookingService, eventService, spaceService)
+	homeRouter := routers.NewHomeRouter(bookingService, spaceService)
 	spaceRouter := routers.NewSpaceRouter(spaceService)
-	scheduleRouter := routers.NewScheduleRouter(spaceService, bookingService, eventService)
+	scheduleRouter := routers.NewScheduleRouter(spaceService, bookingService)
 	bookingRouter := routers.NewBookingRouter(bookingService, spaceService, userService)
-	eventRouter := routers.NewEventRouter(eventService, spaceService)
-	adminRouter := routers.NewAdminRouter(bookingService, eventService, spaceService, userService)
+	adminRouter := routers.NewAdminRouter(bookingService, spaceService, userService)
 
 	protected := vk.LoadUser
 	apiMux := http.NewServeMux()
@@ -70,14 +76,14 @@ func NewServer(
 	apiMux.Handle("/calendar/", protected(scheduleRouter))
 	apiMux.Handle("/bookings", protected(bookingRouter))
 	apiMux.Handle("/bookings/", protected(bookingRouter))
-	apiMux.Handle("/events", protected(eventRouter))
-	apiMux.Handle("/events/", protected(eventRouter))
 	apiMux.Handle("/admin/", protected(adminRouter))
 
-	handler := web.GlobalMiddleware(
-		web.ErrorMiddleware(
-			web.LoggerMiddleware(logger)(
-				vk.VerifySign(apiMux),
+	handler := web.CORS(config.CORSOrigins)(
+		web.GlobalMiddleware(
+			web.ErrorMiddleware(
+				web.LoggerMiddleware(logger)(
+					vk.VerifySign(apiMux),
+				),
 			),
 		),
 	)
@@ -86,12 +92,22 @@ func NewServer(
 	mainMux.HandleFunc(config.Prefix+"/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	mainMux.Handle(config.Prefix+"/swagger/", httpSwagger.WrapHandler)
+	if config.SwaggerConfig.Enabled {
+		mainMux.Handle(config.Prefix+"/swagger/", middlewares.Swagger(config.Prefix))
+	} else {
+		mainMux.HandleFunc(config.Prefix+"/swagger/", func(w http.ResponseWriter, r *http.Request) {
+			http.NotFound(w, r)
+		})
+	}
 	mainMux.Handle(config.Prefix+"/", http.StripPrefix(config.Prefix, handler))
 
 	server := &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", config.Host, config.Port),
-		Handler: mainMux,
+		Addr:              fmt.Sprintf("%s:%d", config.Host, config.Port),
+		Handler:           mainMux,
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
 	}
 
 	return &Server{
@@ -108,5 +124,7 @@ func (s *Server) Start() error {
 
 func (s *Server) Stop() error {
 	s.logger.With(logger.Time("stopped_at", time.Now())).Info("Server stopped")
-	return s.server.Shutdown(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+	return s.server.Shutdown(ctx)
 }

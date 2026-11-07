@@ -16,6 +16,7 @@ type Booking struct {
 	LastName          string      `db:"last_name"`
 	Patronymic        null.String `db:"patronymic"`
 	Occupation        null.String `db:"occupation"`
+	Title             string      `db:"title"`
 	StartsAt          time.Time   `db:"starts_at"`
 	EndsAt            time.Time   `db:"ends_at"`
 	Purpose           string      `db:"purpose"`
@@ -51,6 +52,7 @@ func (b Booking) ToEntity() entities.Booking {
 		LastName:          b.LastName,
 		Patronymic:        b.Patronymic,
 		Occupation:        b.Occupation,
+		Title:             b.Title,
 		StartsAt:          b.StartsAt,
 		EndsAt:            b.EndsAt,
 		Purpose:           b.Purpose,
@@ -82,6 +84,7 @@ func BookingFromEntity(e entities.Booking) Booking {
 		LastName:          e.LastName,
 		Patronymic:        e.Patronymic,
 		Occupation:        e.Occupation,
+		Title:             e.Title,
 		StartsAt:          e.StartsAt,
 		EndsAt:            e.EndsAt,
 		Purpose:           e.Purpose,

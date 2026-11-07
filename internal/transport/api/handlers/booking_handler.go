@@ -10,6 +10,7 @@ import (
 	"github.com/kr0uch/studspace/internal/core/models/dto"
 	"github.com/kr0uch/studspace/internal/core/models/entities"
 	"github.com/kr0uch/studspace/pkg/errors"
+	"github.com/kr0uch/studspace/pkg/utils"
 	"github.com/kr0uch/studspace/pkg/web"
 )
 
@@ -17,12 +18,14 @@ type BookingService interface {
 	CreateBooking(ctx context.Context, actor entities.User, in dto.CreateBooking, now time.Time) (*entities.Booking, error)
 	GetBookingByID(ctx context.Context, actor entities.User, bookingID int64) (*entities.Booking, error)
 	ListUserBookings(ctx context.Context, actor entities.User, in dto.ListUserBookings) ([]entities.Booking, *string, error)
+	ListBookingsInRange(ctx context.Context, from, to time.Time) ([]entities.Booking, error)
 	WithdrawBooking(ctx context.Context, userID, bookingID int64, now time.Time) (*entities.Booking, error)
 	CancelBookingByUser(ctx context.Context, userID, bookingID int64, now time.Time) (*entities.Booking, error)
 	RescheduleBooking(ctx context.Context, userID int64, in dto.RescheduleBooking, now time.Time) (*entities.Booking, error)
 }
 
 type BookingSpaceService interface {
+	ListActiveSpaces(ctx context.Context) ([]entities.Space, error)
 	GetSpaceByID(ctx context.Context, spaceID int16) (*entities.Space, error)
 }
 
@@ -50,7 +53,7 @@ func NewBookingController(bookingService BookingService, spaceService BookingSpa
 // @Accept json
 // @Produce json
 // @Security VKAuth
-// @Param request body api.CreateBookingRequest true "Слот и цель"
+// @Param request body api.CreateBookingRequest true "Слот, название и цель"
 // @Success 201 {object} api.Booking
 // @Failure 400 {object} errors.ErrorResponse
 // @Failure 401 {object} errors.ErrorResponse
@@ -75,6 +78,7 @@ func (c *BookingController) CreateBookingHandler(w http.ResponseWriter, r *http.
 		SpaceID:     in.SpaceID,
 		StartsAt:    in.StartsAt,
 		EndsAt:      in.EndsAt,
+		Title:       in.Title,
 		Purpose:     in.Purpose,
 		PeopleCount: in.PeopleCount,
 	}, now)
@@ -88,6 +92,62 @@ func (c *BookingController) CreateBookingHandler(w http.ResponseWriter, r *http.
 	}
 	w.WriteHeader(http.StatusCreated)
 	return json.NewEncoder(w).Encode(out)
+}
+
+// ListBookingsHandler godoc
+// @Summary Лента броней
+// @Description Одобренные брони в диапазоне дат. featured — ближайшая сегодняшняя, которая ещё не закончилась.
+// @Tags Брони
+// @Produce json
+// @Security VKAuth
+// @Param from query string true "YYYY-MM-DD"
+// @Param to query string true "YYYY-MM-DD"
+// @Success 200 {object} api.BookingFeed
+// @Failure 401 {object} errors.ErrorResponse
+// @Failure 422 {object} errors.ErrorResponse
+// @Failure 500 {object} errors.ErrorResponse
+// @Router /bookings [get]
+func (c *BookingController) ListBookingsHandler(w http.ResponseWriter, r *http.Request) error {
+	if _, err := web.GetUserFromCtx(r.Context()); err != nil {
+		return err
+	}
+
+	from, to, err := parseInclusiveDays(r.URL.Query().Get("from"), r.URL.Query().Get("to"))
+	if err != nil {
+		return err
+	}
+
+	bookings, err := c.bookingService.ListBookingsInRange(r.Context(), from, to)
+	if err != nil {
+		return err
+	}
+
+	spaces, err := c.spaceService.ListActiveSpaces(r.Context())
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	items := make([]api.Booking, 0, len(bookings))
+	for _, booking := range bookings {
+		if booking.Status != entities.BookingStatusApproved {
+			continue
+		}
+		var space *entities.Space
+		for i := range spaces {
+			if spaces[i].SpaceID == booking.SpaceID {
+				space = &spaces[i]
+				break
+			}
+		}
+		items = append(items, api.NewBooking(booking, space, nil, now))
+	}
+
+	return json.NewEncoder(w).Encode(api.BookingFeed{
+		WeekTotal: len(items),
+		Featured:  featuredBookingToday(items, now),
+		Items:     items,
+	})
 }
 
 // ListMyBookingsHandler godoc
@@ -214,6 +274,7 @@ func (c *BookingController) CancelBookingHandler(w http.ResponseWriter, r *http.
 
 // RescheduleBookingHandler godoc
 // @Summary Перенести бронь
+// @Description Новая заявка со ссылкой на одобренную бронь. Старый слот сохраняется, пока перенос не одобрят. Отказ его не снимает.
 // @Tags Брони
 // @Accept json
 // @Produce json
@@ -282,4 +343,20 @@ func (c *BookingController) bookingView(r *http.Request, booking entities.Bookin
 		decisionBy, _ = c.userService.GetUserByID(r.Context(), booking.DecidedBy.Int64)
 	}
 	return api.NewBooking(booking, space, decisionBy, now), nil
+}
+
+func featuredBookingToday(items []api.Booking, now time.Time) *api.Booking {
+	local := now.In(utils.Moscow)
+	year, month, day := local.Date()
+	for i := range items {
+		if !items[i].EndsAt.After(now) {
+			continue
+		}
+		starts := items[i].StartsAt.In(utils.Moscow)
+		y, m, d := starts.Date()
+		if y == year && m == month && d == day {
+			return &items[i]
+		}
+	}
+	return nil
 }

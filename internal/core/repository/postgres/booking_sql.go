@@ -7,6 +7,8 @@ var (
 	qBookingCreate string
 	//go:embed sql/booking/booking_get_by_id.sql
 	qBookingGetByID string
+	//go:embed sql/booking/booking_get_by_id_for_update.sql
+	qBookingGetByIDForUpdate string
 	//go:embed sql/booking/booking_list_by_user_active.sql
 	qBookingListByUserActive string
 	//go:embed sql/booking/booking_list_by_user_history.sql
@@ -39,4 +41,6 @@ var (
 	qBookingReturnToReview string
 	//go:embed sql/booking/booking_reschedule.sql
 	qBookingReschedule string
+	//go:embed sql/booking/booking_has_pending_reschedule.sql
+	qBookingHasPendingReschedule string
 )

@@ -17,7 +17,6 @@ const (
 	CodeNotFound          Code = "NOT_FOUND"
 	CodeSlotConflict      Code = "SLOT_CONFLICT"
 	CodeInvalidTransition Code = "INVALID_TRANSITION"
-	CodeEventFull         Code = "EVENT_FULL"
 	CodeValidation        Code = "VALIDATION_ERROR"
 	CodeTooManyPending    Code = "TOO_MANY_PENDING"
 	CodeInternal          Code = "INTERNAL"
@@ -194,7 +193,6 @@ var (
 
 	ErrSlotConflict      = NewHttpError(http.StatusConflict, CodeSlotConflict, "Выбранное время уже занято")
 	ErrInvalidTransition = NewHttpError(http.StatusConflict, CodeInvalidTransition, "Действие недоступно для заявки в текущем статусе")
-	ErrEventFull         = NewHttpError(http.StatusConflict, CodeEventFull, "Мест нет")
 
 	ErrValidation = NewHttpError(http.StatusUnprocessableEntity, CodeValidation, "Проверьте правильность заполнения полей")
 

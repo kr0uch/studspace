@@ -21,15 +21,13 @@ type SpaceRepository interface {
 type SpaceService struct {
 	spaces   SpaceRepository
 	bookings BookingRepository
-	events   EventRepository
 }
 
 func NewSpaceService(
 	spaces SpaceRepository,
 	bookings BookingRepository,
-	events EventRepository,
 ) *SpaceService {
-	return &SpaceService{spaces: spaces, bookings: bookings, events: events}
+	return &SpaceService{spaces: spaces, bookings: bookings}
 }
 
 func (s *SpaceService) ListActiveSpaces(ctx context.Context) ([]entities.Space, error) {
@@ -115,12 +113,8 @@ func (s *SpaceService) busyInRange(ctx context.Context, from, to time.Time, spac
 	if err != nil {
 		return nil, err
 	}
-	events, err := s.events.ListEventsInRange(ctx, from, to, spaceID)
-	if err != nil {
-		return nil, err
-	}
 
-	result := make([]dto.BusyInterval, 0, len(bookings)+len(events))
+	result := make([]dto.BusyInterval, 0, len(bookings))
 	for _, booking := range bookings {
 		if booking.Status != entities.BookingStatusApproved {
 			continue
@@ -128,14 +122,6 @@ func (s *SpaceService) busyInRange(ctx context.Context, from, to time.Time, spac
 		result = append(result, dto.BusyInterval{
 			StartsAt: booking.StartsAt,
 			EndsAt:   booking.EndsAt,
-			Kind:     dto.BusyKindBooking,
-		})
-	}
-	for _, event := range events {
-		result = append(result, dto.BusyInterval{
-			StartsAt: event.StartsAt,
-			EndsAt:   event.EndsAt,
-			Kind:     dto.BusyKindEvent,
 		})
 	}
 	sort.Slice(result, func(i, j int) bool {

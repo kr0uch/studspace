@@ -28,7 +28,7 @@ func NewUserController(userService UserService) *UserController {
 
 // SyncHandler godoc
 // @Summary Синхронизация пользователя из VK
-// @Description Создаёт или обновляет профиль по vk_user_id из подписи. Имя берётся из тела, не из users.get.
+// @Description Создаёт или обновляет профиль по vk_user_id из подписи. Имя берётся из тела, не из users.get. VK ID из admins.txt получает роль admin, остальные — student.
 // @Tags Пользователь
 // @Accept json
 // @Produce json

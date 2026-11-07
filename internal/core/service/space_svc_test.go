@@ -42,7 +42,7 @@ func TestSpaceService_ListActiveSpaces(t *testing.T) {
 			spaces := new(mockSpaceRepository)
 			tt.mockBehavior(spaces)
 
-			got, err := NewSpaceService(spaces, new(mockBookingRepository), new(mockEventRepository)).ListActiveSpaces(ctx)
+			got, err := NewSpaceService(spaces, new(mockBookingRepository)).ListActiveSpaces(ctx)
 			if tt.expectedError != nil {
 				assert.ErrorIs(t, err, tt.expectedError)
 			} else {
@@ -92,7 +92,7 @@ func TestSpaceService_GetSpaceByID(t *testing.T) {
 			spaces := new(mockSpaceRepository)
 			tt.mockBehavior(spaces)
 
-			got, err := NewSpaceService(spaces, new(mockBookingRepository), new(mockEventRepository)).GetSpaceByID(ctx, 1)
+			got, err := NewSpaceService(spaces, new(mockBookingRepository)).GetSpaceByID(ctx, 1)
 			if tt.expectedError != nil {
 				assert.ErrorIs(t, err, tt.expectedError)
 				assert.Nil(t, got)
@@ -120,12 +120,7 @@ func TestSpaceService_GetSpaceCurrentStatus(t *testing.T) {
 		return id != nil && *id == spaceID
 	})).Return([]entities.Booking{}, nil)
 
-	events := new(mockEventRepository)
-	events.On("ListEventsInRange", ctx, from, to, mock.MatchedBy(func(id *int16) bool {
-		return id != nil && *id == spaceID
-	})).Return([]entities.Event{}, nil)
-
-	got, err := NewSpaceService(spaces, bookings, events).GetSpaceCurrentStatus(ctx, dto.GetSpaceCurrentStatus{
+	got, err := NewSpaceService(spaces, bookings).GetSpaceCurrentStatus(ctx, dto.GetSpaceCurrentStatus{
 		SpaceID: hall.SpaceID,
 		Now:     now,
 	})
@@ -133,11 +128,10 @@ func TestSpaceService_GetSpaceCurrentStatus(t *testing.T) {
 	assert.Equal(t, entities.SpaceStateFree, got.State)
 	spaces.AssertExpectations(t)
 	bookings.AssertExpectations(t)
-	events.AssertExpectations(t)
 }
 
 func TestSpaceService_GetSpaceAvailability_validation(t *testing.T) {
-	_, err := NewSpaceService(new(mockSpaceRepository), new(mockBookingRepository), new(mockEventRepository)).
+	_, err := NewSpaceService(new(mockSpaceRepository), new(mockBookingRepository)).
 		GetSpaceAvailability(context.Background(), dto.GetSpaceAvailability{})
 	assert.ErrorIs(t, err, errors.ErrValidation)
 }
