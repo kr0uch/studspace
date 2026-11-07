@@ -7,8 +7,8 @@ import (
 	"github.com/kr0uch/studspace/pkg/web"
 )
 
-func NewScheduleRouter(spaceService handlers.ScheduleSpaceService, bookingService handlers.ScheduleBookingService, eventService handlers.ScheduleEventService) *http.ServeMux {
-	controller := handlers.NewScheduleController(spaceService, bookingService, eventService)
+func NewScheduleRouter(spaceService handlers.ScheduleSpaceService, bookingService handlers.ScheduleBookingService) *http.ServeMux {
+	controller := handlers.NewScheduleController(spaceService, bookingService)
 	router := http.NewServeMux()
 
 	router.HandleFunc("GET /schedule", web.HandleWithError(controller.GetScheduleHandler))

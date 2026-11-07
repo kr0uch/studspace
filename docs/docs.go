@@ -329,218 +329,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/admin/events": {
-            "post": {
-                "security": [
-                    {
-                        "VKAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Админ"
-                ],
-                "summary": "Админ: создать мероприятие",
-                "parameters": [
-                    {
-                        "description": "Мероприятие",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/api.CreateEventRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/api.Event"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/events/{id}": {
-            "patch": {
-                "security": [
-                    {
-                        "VKAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Админ"
-                ],
-                "summary": "Админ: изменить мероприятие",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "event_id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "То же тело, что при создании",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/api.CreateEventRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/api.Event"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/events/{id}/cancel": {
-            "post": {
-                "security": [
-                    {
-                        "VKAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Админ"
-                ],
-                "summary": "Админ: отменить мероприятие",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "event_id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/api.Event"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/auth/sync": {
             "post": {
                 "security": [
@@ -548,7 +336,7 @@ const docTemplate = `{
                         "VKAuth": []
                     }
                 ],
-                "description": "Создаёт или обновляет профиль по vk_user_id из подписи. Имя берётся из тела, не из users.get.",
+                "description": "Создаёт или обновляет профиль по vk_user_id из подписи. Имя берётся из тела, не из users.get. VK ID из admins.txt получает роль admin, остальные — student.",
                 "consumes": [
                     "application/json"
                 ],
@@ -605,6 +393,63 @@ const docTemplate = `{
             }
         },
         "/bookings": {
+            "get": {
+                "security": [
+                    {
+                        "VKAuth": []
+                    }
+                ],
+                "description": "Одобренные брони в диапазоне дат. featured — ближайшая сегодняшняя, которая ещё не закончилась.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Брони"
+                ],
+                "summary": "Лента броней",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "YYYY-MM-DD",
+                        "name": "from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "YYYY-MM-DD",
+                        "name": "to",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.BookingFeed"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -623,7 +468,7 @@ const docTemplate = `{
                 "summary": "Создать заявку на бронь",
                 "parameters": [
                     {
-                        "description": "Слот и цель",
+                        "description": "Слот, название и цель",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -810,6 +655,7 @@ const docTemplate = `{
                         "VKAuth": []
                     }
                 ],
+                "description": "Новая заявка со ссылкой на одобренную бронь. Старый слот сохраняется, пока перенос не одобрят. Отказ его не снимает.",
                 "consumes": [
                     "application/json"
                 ],
@@ -954,7 +800,7 @@ const docTemplate = `{
                         "VKAuth": []
                     }
                 ],
-                "description": "Дни месяца с pending/approved бронями или published мероприятиями.",
+                "description": "Дни месяца с pending или approved бронями.",
                 "produces": [
                     "application/json"
                 ],
@@ -999,270 +845,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/events": {
-            "get": {
-                "security": [
-                    {
-                        "VKAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Мероприятия"
-                ],
-                "summary": "Лента мероприятий",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "YYYY-MM-DD",
-                        "name": "from",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "YYYY-MM-DD",
-                        "name": "to",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "study, career, leisure",
-                        "name": "category",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "только свои",
-                        "name": "mine",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/api.EventList"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/events/{id}/registration": {
-            "post": {
-                "security": [
-                    {
-                        "VKAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Мероприятия"
-                ],
-                "summary": "Записаться на мероприятие",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "event_id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/api.Event"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "VKAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Мероприятия"
-                ],
-                "summary": "Отменить запись",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "event_id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/api.Event"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/events/{id}/waitlist": {
-            "post": {
-                "security": [
-                    {
-                        "VKAuth": []
-                    }
-                ],
-                "tags": [
-                    "Мероприятия"
-                ],
-                "summary": "Подписаться на лист ожидания",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "event_id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "VKAuth": []
-                    }
-                ],
-                "tags": [
-                    "Мероприятия"
-                ],
-                "summary": "Отписаться от листа ожидания",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "event_id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/errors.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/home": {
             "get": {
                 "security": [
@@ -1270,7 +852,7 @@ const docTemplate = `{
                         "VKAuth": []
                     }
                 ],
-                "description": "Сегодняшние активные брони и свои мероприятия, плюс статусы залов.",
+                "description": "Сегодняшние активные брони плюс статусы залов.",
                 "produces": [
                     "application/json"
                 ],
@@ -1486,7 +1068,7 @@ const docTemplate = `{
                         "VKAuth": []
                     }
                 ],
-                "description": "Брони и мероприятия в диапазоне дат. Чужие pending скрыты.",
+                "description": "Брони в диапазоне дат: свои и чужие pending и approved.",
                 "produces": [
                     "application/json"
                 ],
@@ -1696,6 +1278,9 @@ const docTemplate = `{
                 "reject_reason": {
                     "$ref": "#/definitions/api.BookingRejectReason"
                 },
+                "rescheduled_from_id": {
+                    "type": "integer"
+                },
                 "space": {
                     "$ref": "#/definitions/api.BookingSpace"
                 },
@@ -1704,6 +1289,9 @@ const docTemplate = `{
                 },
                 "status": {
                     "$ref": "#/definitions/entities.BookingStatus"
+                },
+                "title": {
+                    "type": "string"
                 },
                 "user": {
                     "$ref": "#/definitions/entities.User"
@@ -1800,6 +1388,9 @@ const docTemplate = `{
                 "reject_reason": {
                     "$ref": "#/definitions/api.BookingRejectReason"
                 },
+                "rescheduled_from_id": {
+                    "type": "integer"
+                },
                 "space": {
                     "$ref": "#/definitions/api.BookingSpace"
                 },
@@ -1808,6 +1399,9 @@ const docTemplate = `{
                 },
                 "status": {
                     "$ref": "#/definitions/entities.BookingStatus"
+                },
+                "title": {
+                    "type": "string"
                 }
             }
         },
@@ -1829,6 +1423,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.BookingFeed": {
+            "type": "object",
+            "properties": {
+                "featured": {
+                    "$ref": "#/definitions/api.Booking"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.Booking"
+                    }
+                },
+                "week_total": {
                     "type": "integer"
                 }
             }
@@ -1894,9 +1505,6 @@ const docTemplate = `{
                 },
                 "starts_at": {
                     "type": "string"
-                },
-                "type": {
-                    "type": "string"
                 }
             }
         },
@@ -1917,113 +1525,9 @@ const docTemplate = `{
                 },
                 "starts_at": {
                     "type": "string"
-                }
-            }
-        },
-        "api.CreateEventRequest": {
-            "type": "object",
-            "properties": {
-                "capacity": {
-                    "type": "integer"
-                },
-                "category": {
-                    "$ref": "#/definitions/entities.EventCategory"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "ends_at": {
-                    "type": "string"
-                },
-                "organizer": {
-                    "type": "string"
-                },
-                "space_id": {
-                    "type": "integer"
-                },
-                "starts_at": {
-                    "type": "string"
                 },
                 "title": {
                     "type": "string"
-                }
-            }
-        },
-        "api.Event": {
-            "type": "object",
-            "properties": {
-                "capacity": {
-                    "type": "integer"
-                },
-                "category": {
-                    "$ref": "#/definitions/entities.EventCategory"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "ends_at": {
-                    "type": "string"
-                },
-                "event_id": {
-                    "type": "integer"
-                },
-                "is_registered": {
-                    "type": "boolean"
-                },
-                "is_subscribed": {
-                    "type": "boolean"
-                },
-                "organizer": {
-                    "type": "string"
-                },
-                "registered_count": {
-                    "type": "integer"
-                },
-                "seats_left": {
-                    "type": "integer"
-                },
-                "space": {
-                    "$ref": "#/definitions/api.EventSpace"
-                },
-                "starts_at": {
-                    "type": "string"
-                },
-                "state": {
-                    "$ref": "#/definitions/entities.EventUserState"
-                },
-                "status": {
-                    "$ref": "#/definitions/entities.EventStatus"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "api.EventList": {
-            "type": "object",
-            "properties": {
-                "featured": {
-                    "$ref": "#/definitions/api.Event"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.Event"
-                    }
-                },
-                "week_total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "api.EventSpace": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "space_id": {
-                    "type": "integer"
                 }
             }
         },
@@ -2064,9 +1568,6 @@ const docTemplate = `{
                 "ends_at": {
                     "type": "string"
                 },
-                "event_id": {
-                    "type": "integer"
-                },
                 "purpose": {
                     "type": "string"
                 },
@@ -2080,9 +1581,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/entities.BookingStatus"
                 },
                 "title": {
-                    "type": "string"
-                },
-                "type": {
                     "type": "string"
                 }
             }
@@ -2168,14 +1666,8 @@ const docTemplate = `{
                 "ends_at": {
                     "type": "string"
                 },
-                "event_id": {
-                    "type": "integer"
-                },
                 "is_mine": {
                     "type": "boolean"
-                },
-                "organizer": {
-                    "type": "string"
                 },
                 "owner_name": {
                     "type": "string"
@@ -2190,9 +1682,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/entities.BookingStatus"
                 },
                 "title": {
-                    "type": "string"
-                },
-                "type": {
                     "type": "string"
                 }
             }
@@ -2326,7 +1815,8 @@ const docTemplate = `{
                 "rejected",
                 "cancelled",
                 "withdrawn",
-                "completed"
+                "completed",
+                "expired"
             ],
             "x-enum-varnames": [
                 "BookingStatusPending",
@@ -2334,7 +1824,8 @@ const docTemplate = `{
                 "BookingStatusRejected",
                 "BookingStatusCancelled",
                 "BookingStatusWithdrawn",
-                "BookingStatusCompleted"
+                "BookingStatusCompleted",
+                "BookingStatusExpired"
             ]
         },
         "entities.CancelActor": {
@@ -2346,47 +1837,6 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "CancelActorUser",
                 "CancelActorAdmin"
-            ]
-        },
-        "entities.EventCategory": {
-            "type": "string",
-            "enum": [
-                "study",
-                "career",
-                "leisure"
-            ],
-            "x-enum-varnames": [
-                "EventCategoryStudy",
-                "EventCategoryCareer",
-                "EventCategoryLeisure"
-            ]
-        },
-        "entities.EventStatus": {
-            "type": "string",
-            "enum": [
-                "published",
-                "cancelled"
-            ],
-            "x-enum-varnames": [
-                "EventStatusPublished",
-                "EventStatusCancelled"
-            ]
-        },
-        "entities.EventUserState": {
-            "type": "string",
-            "enum": [
-                "available",
-                "few_left",
-                "full",
-                "registered",
-                "past"
-            ],
-            "x-enum-varnames": [
-                "EventUserStateAvailable",
-                "EventUserStateFewLeft",
-                "EventUserStateFull",
-                "EventUserStateRegistered",
-                "EventUserStatePast"
             ]
         },
         "entities.SpaceNowStatus": {
@@ -2465,7 +1915,6 @@ const docTemplate = `{
                 "NOT_FOUND",
                 "SLOT_CONFLICT",
                 "INVALID_TRANSITION",
-                "EVENT_FULL",
                 "VALIDATION_ERROR",
                 "TOO_MANY_PENDING",
                 "INTERNAL"
@@ -2477,7 +1926,6 @@ const docTemplate = `{
                 "CodeNotFound",
                 "CodeSlotConflict",
                 "CodeInvalidTransition",
-                "CodeEventFull",
                 "CodeValidation",
                 "CodeTooManyPending",
                 "CodeInternal"
@@ -2521,7 +1969,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/api/v1",
 	Schemes:          []string{"http"},
 	Title:            "StudSpace API",
-	Description:      "Бэкенд VK Mini App: бронь студенческих залов и запись на мероприятия.",
+	Description:      "Бэкенд VK Mini App: бронь студенческих залов.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

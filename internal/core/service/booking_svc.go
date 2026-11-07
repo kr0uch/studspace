@@ -19,9 +19,10 @@ type BookingRepository interface {
 	CreateBooking(ctx context.Context, booking entities.Booking) (*entities.Booking, error)
 	GetBookingByID(ctx context.Context, bookingID int64) (*entities.Booking, error)
 	ListUserBookings(ctx context.Context, userID int64, tab entities.UserBookingTab, now time.Time, cursorAt *time.Time, cursorID int64, limit int) ([]entities.Booking, error)
-	ListAdminBookings(ctx context.Context, tab entities.AdminBookingTab, cursorAt *time.Time, cursorID int64, limit int) ([]entities.Booking, error)
-	CountPendingBookingsByUser(ctx context.Context, userID int64) (int, error)
-	CountBookingsByStatus(ctx context.Context, status entities.BookingStatus) (int, error)
+	ListAdminBookings(ctx context.Context, tab entities.AdminBookingTab, now time.Time, cursorAt *time.Time, cursorID int64, limit int) ([]entities.Booking, error)
+	CountPendingBookingsByUser(ctx context.Context, userID int64, now time.Time) (int, error)
+	HasPendingReschedule(ctx context.Context, bookingID int64) (bool, error)
+	CountBookingsByStatus(ctx context.Context, status entities.BookingStatus, now time.Time) (int, error)
 	ListOverlappingBookings(ctx context.Context, spaceID int16, startsAt, endsAt time.Time, excludeBookingID *int64) ([]entities.Booking, error)
 	ListBookingsInRange(ctx context.Context, from, to time.Time, spaceID *int16) ([]entities.Booking, error)
 	ListBusyBookingDays(ctx context.Context, from, to time.Time) ([]time.Time, error)
@@ -35,7 +36,6 @@ type BookingRepository interface {
 
 type BookingService struct {
 	bookings BookingRepository
-	events   EventRepository
 	spaces   SpaceRepository
 	users    UserRepository
 	notify   NotifyRepository
@@ -43,14 +43,12 @@ type BookingService struct {
 
 func NewBookingService(
 	bookings BookingRepository,
-	events EventRepository,
 	spaces SpaceRepository,
 	users UserRepository,
 	notify NotifyRepository,
 ) *BookingService {
 	return &BookingService{
 		bookings: bookings,
-		events:   events,
 		spaces:   spaces,
 		users:    users,
 		notify:   notify,
@@ -62,12 +60,13 @@ func (s *BookingService) CreateBooking(ctx context.Context, actor entities.User,
 	if err != nil {
 		return nil, err
 	}
+	in.Title = strings.TrimSpace(in.Title)
 	in.Purpose = strings.TrimSpace(in.Purpose)
-	if err := s.validateBookingInput(*space, in.StartsAt, in.EndsAt, in.Purpose, in.PeopleCount, now); err != nil {
+	if err := s.validateBookingInput(*space, in.StartsAt, in.EndsAt, in.Title, in.Purpose, in.PeopleCount, now); err != nil {
 		return nil, err
 	}
 
-	pending, err := s.bookings.CountPendingBookingsByUser(ctx, actor.UserID)
+	pending, err := s.bookings.CountPendingBookingsByUser(ctx, actor.UserID, now)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +74,7 @@ func (s *BookingService) CreateBooking(ctx context.Context, actor entities.User,
 		return nil, errors.ErrTooManyPending
 	}
 
-	overlaps, err := loadSlotOverlaps(ctx, s.bookings, s.events, in.SpaceID, in.StartsAt, in.EndsAt, nil, nil)
+	overlaps, err := loadSlotOverlaps(ctx, s.bookings, in.SpaceID, in.StartsAt, in.EndsAt, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -90,6 +89,7 @@ func (s *BookingService) CreateBooking(ctx context.Context, actor entities.User,
 		LastName:    actor.LastName,
 		Patronymic:  actor.Patronymic,
 		Occupation:  actor.Occupation,
+		Title:       in.Title,
 		StartsAt:    in.StartsAt,
 		EndsAt:      in.EndsAt,
 		Purpose:     in.Purpose,
@@ -143,7 +143,7 @@ func (s *BookingService) ListAdminBookings(ctx context.Context, actor entities.U
 	if err != nil {
 		return nil, nil, err
 	}
-	rows, err := s.bookings.ListAdminBookings(ctx, in.Tab, cursorAt, cursorID, fetchLimit(limit))
+	rows, err := s.bookings.ListAdminBookings(ctx, in.Tab, in.Now, cursorAt, cursorID, fetchLimit(limit))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -158,18 +158,18 @@ func (s *BookingService) ListAdminBookings(ctx context.Context, actor entities.U
 	return clipBookingPage(rows, limit, key)
 }
 
-func (s *BookingService) CountBookingsByStatus(ctx context.Context, actor entities.User, status entities.BookingStatus) (int, error) {
+func (s *BookingService) CountBookingsByStatus(ctx context.Context, actor entities.User, status entities.BookingStatus, now time.Time) (int, error) {
 	if err := requireAdmin(actor); err != nil {
 		return 0, err
 	}
-	return s.bookings.CountBookingsByStatus(ctx, status)
+	return s.bookings.CountBookingsByStatus(ctx, status, now)
 }
 
 func (s *BookingService) GetSlotOverlaps(ctx context.Context, actor entities.User, in dto.GetSlotOverlaps) (*dto.SlotOverlaps, error) {
 	if err := requireAdmin(actor); err != nil {
 		return nil, err
 	}
-	return loadSlotOverlaps(ctx, s.bookings, s.events, in.SpaceID, in.StartsAt, in.EndsAt, in.ExcludeBookingID, nil)
+	return loadSlotOverlaps(ctx, s.bookings, in.SpaceID, in.StartsAt, in.EndsAt, in.ExcludeBookingID)
 }
 
 func (s *BookingService) ListBusyBookingDays(ctx context.Context, month time.Time) ([]time.Time, error) {
@@ -210,12 +210,30 @@ func (s *BookingService) RescheduleBooking(ctx context.Context, userID int64, in
 	if err != nil {
 		return nil, err
 	}
-	if err := s.validateBookingInput(*space, in.StartsAt, in.EndsAt, current.Purpose, current.PeopleCount, now); err != nil {
+	if current.CurrentStatus(now) != entities.BookingStatusApproved {
+		return nil, errors.ErrInvalidTransition
+	}
+	if err := s.validateBookingInput(*space, in.StartsAt, in.EndsAt, current.Title, current.Purpose, current.PeopleCount, now); err != nil {
 		return nil, err
 	}
 
+	pending, err := s.bookings.CountPendingBookingsByUser(ctx, current.UserID, now)
+	if err != nil {
+		return nil, err
+	}
+	if pending >= maxPendingBookings {
+		return nil, errors.ErrTooManyPending
+	}
+	exists, err := s.bookings.HasPendingReschedule(ctx, current.BookingID)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, errors.Validation(map[string]string{"booking_id": "уже есть заявка на перенос"})
+	}
+
 	exclude := current.BookingID
-	overlaps, err := loadSlotOverlaps(ctx, s.bookings, s.events, in.SpaceID, in.StartsAt, in.EndsAt, &exclude, nil)
+	overlaps, err := loadSlotOverlaps(ctx, s.bookings, in.SpaceID, in.StartsAt, in.EndsAt, &exclude)
 	if err != nil {
 		return nil, err
 	}
@@ -234,8 +252,14 @@ func (s *BookingService) ApproveBooking(ctx context.Context, actor entities.User
 	if err != nil {
 		return nil, err
 	}
+	if booking.CurrentStatus(now) != entities.BookingStatusPending {
+		return nil, errors.ErrInvalidTransition
+	}
 	exclude := booking.BookingID
-	overlaps, err := loadSlotOverlaps(ctx, s.bookings, s.events, booking.SpaceID, booking.StartsAt, booking.EndsAt, &exclude, nil)
+	if booking.RescheduledFromID.Valid {
+		exclude = booking.RescheduledFromID.Int64
+	}
+	overlaps, err := loadSlotOverlaps(ctx, s.bookings, booking.SpaceID, booking.StartsAt, booking.EndsAt, &exclude)
 	if err != nil {
 		return nil, err
 	}
@@ -304,11 +328,14 @@ func (s *BookingService) ownBooking(ctx context.Context, userID, bookingID int64
 	return booking, nil
 }
 
-func (s *BookingService) validateBookingInput(space entities.Space, startsAt, endsAt time.Time, purpose string, peopleCount int, now time.Time) error {
+func (s *BookingService) validateBookingInput(space entities.Space, startsAt, endsAt time.Time, title, purpose string, peopleCount int, now time.Time) error {
 	if err := validateSpaceTimeWindow(space, startsAt, endsAt, now); err != nil {
 		return err
 	}
 	fields := map[string]string{}
+	if n := utf8.RuneCountInString(title); n < 1 || n > 150 {
+		fields["title"] = "от 1 до 150 символов"
+	}
 	if n := utf8.RuneCountInString(purpose); n < 1 || n > 150 {
 		fields["purpose"] = "от 1 до 150 символов"
 	}
@@ -381,17 +408,13 @@ func (s *BookingService) notifyUser(ctx context.Context, userID int64, message s
 	return errors.WrapNotify(err)
 }
 
-func loadSlotOverlaps(ctx context.Context, bookings BookingRepository, events EventRepository, spaceID int16, startsAt, endsAt time.Time, excludeBookingID, excludeEventID *int64) (*dto.SlotOverlaps, error) {
+func loadSlotOverlaps(ctx context.Context, bookings BookingRepository, spaceID int16, startsAt, endsAt time.Time, excludeBookingID *int64) (*dto.SlotOverlaps, error) {
 	overlappingBookings, err := bookings.ListOverlappingBookings(ctx, spaceID, startsAt, endsAt, excludeBookingID)
 	if err != nil {
 		return nil, err
 	}
-	overlappingEvents, err := events.ListOverlappingEvents(ctx, spaceID, startsAt, endsAt, excludeEventID)
-	if err != nil {
-		return nil, err
-	}
 
-	result := &dto.SlotOverlaps{Events: overlappingEvents}
+	result := &dto.SlotOverlaps{}
 	for _, booking := range overlappingBookings {
 		if booking.Status == entities.BookingStatusApproved {
 			result.Approved = append(result.Approved, booking)

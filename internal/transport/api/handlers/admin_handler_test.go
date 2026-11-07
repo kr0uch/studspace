@@ -29,8 +29,8 @@ func (m *mockAdminBookingService) ListAdminBookings(ctx context.Context, actor e
 	return args.Get(0).([]entities.Booking), cursor, args.Error(2)
 }
 
-func (m *mockAdminBookingService) CountBookingsByStatus(ctx context.Context, actor entities.User, status entities.BookingStatus) (int, error) {
-	args := m.Called(ctx, actor, status)
+func (m *mockAdminBookingService) CountBookingsByStatus(ctx context.Context, actor entities.User, status entities.BookingStatus, now time.Time) (int, error) {
+	args := m.Called(ctx, actor, status, now)
 	return args.Int(0), args.Error(1)
 }
 
@@ -74,32 +74,6 @@ func (m *mockAdminBookingService) ReturnBookingToReview(ctx context.Context, act
 	return args.Get(0).(*entities.Booking), args.Error(1)
 }
 
-type mockAdminEventService struct{ mock.Mock }
-
-func (m *mockAdminEventService) CreateEvent(ctx context.Context, actor entities.User, in dto.CreateEvent, now time.Time) (*entities.Event, error) {
-	args := m.Called(ctx, actor, in, now)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entities.Event), args.Error(1)
-}
-
-func (m *mockAdminEventService) UpdateEvent(ctx context.Context, actor entities.User, eventID int64, in dto.CreateEvent, now time.Time) (*entities.Event, error) {
-	args := m.Called(ctx, actor, eventID, in, now)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entities.Event), args.Error(1)
-}
-
-func (m *mockAdminEventService) CancelEvent(ctx context.Context, actor entities.User, eventID int64) (*entities.Event, error) {
-	args := m.Called(ctx, actor, eventID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entities.Event), args.Error(1)
-}
-
 type mockAdminSpaceService struct{ mock.Mock }
 
 func (m *mockAdminSpaceService) GetSpaceByID(ctx context.Context, spaceID int16) (*entities.Space, error) {
@@ -138,7 +112,7 @@ func TestAdminController_ApproveBookingHandler(t *testing.T) {
 		req.SetPathValue("id", "10")
 		req = req.WithContext(web.ContextWithUser(req.Context(), admin))
 		w := httptest.NewRecorder()
-		err := NewAdminController(bookings, new(mockAdminEventService), spaces, users).ApproveBookingHandler(w, req)
+		err := NewAdminController(bookings, spaces, users).ApproveBookingHandler(w, req)
 		assert.NoError(t, err)
 		bookings.AssertExpectations(t)
 	})
@@ -150,7 +124,7 @@ func TestAdminController_ApproveBookingHandler(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/admin/bookings/10/approve", nil)
 		req.SetPathValue("id", "10")
 		req = req.WithContext(web.ContextWithUser(req.Context(), testHandlerUser()))
-		err := NewAdminController(bookings, new(mockAdminEventService), new(mockAdminSpaceService), new(mockAdminUserService)).
+		err := NewAdminController(bookings, new(mockAdminSpaceService), new(mockAdminUserService)).
 			ApproveBookingHandler(httptest.NewRecorder(), req)
 		assert.ErrorIs(t, err, errors.ErrForbidden)
 	})

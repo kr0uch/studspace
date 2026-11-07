@@ -19,7 +19,7 @@ import (
 
 // @title StudSpace API
 // @version 1.0
-// @description Бэкенд VK Mini App: бронь студенческих залов и запись на мероприятия.
+// @description Бэкенд VK Mini App: бронь студенческих залов.
 // @host localhost:8080
 // @schemes http
 // @BasePath /api/v1
@@ -54,14 +54,18 @@ func main() {
 	userRepo := postgres.NewUserRepository(postgresDB)
 	spaceRepo := postgres.NewSpaceRepository(postgresDB)
 	bookingRepo := postgres.NewBookingRepository(postgresDB)
-	eventRepo := postgres.NewEventRepository(postgresDB)
 
 	notifyRepo := postgres.NewNotifyRepository(vk.NewVKClient(cfg.VK.NotifyToken))
 
-	userService := service.NewUserService(userRepo)
-	spaceService := service.NewSpaceService(spaceRepo, bookingRepo, eventRepo)
-	bookingService := service.NewBookingService(bookingRepo, eventRepo, spaceRepo, userRepo, notifyRepo)
-	eventService := service.NewEventService(eventRepo, bookingRepo, spaceRepo, userRepo, notifyRepo)
+	adminIDs, err := config.LoadAdminVKUserIDs(config.AdminsFile)
+	if err != nil {
+		zapLogger.Error("config.LoadAdminVKUserIDs", logger.Error(err))
+		return
+	}
+
+	userService := service.NewUserService(userRepo, adminIDs)
+	spaceService := service.NewSpaceService(spaceRepo, bookingRepo)
+	bookingService := service.NewBookingService(bookingRepo, spaceRepo, userRepo, notifyRepo)
 
 	server := servers.NewServer(
 		cfg.ServerConfig,
@@ -70,7 +74,6 @@ func main() {
 		userService,
 		spaceService,
 		bookingService,
-		eventService,
 	)
 
 	graceChan := make(chan os.Signal, 1)

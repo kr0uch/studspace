@@ -10,6 +10,7 @@ import (
 
 type CreateBookingRequest struct {
 	SpaceID     int16     `json:"space_id"`
+	Title       string    `json:"title"`
 	StartsAt    time.Time `json:"starts_at"`
 	EndsAt      time.Time `json:"ends_at"`
 	Purpose     string    `json:"purpose"`
@@ -49,27 +50,35 @@ type BookingDecision struct {
 }
 
 type Booking struct {
-	BookingID    int64                    `json:"booking_id"`
-	Status       entities.BookingStatus   `json:"status"`
-	Space        BookingSpace             `json:"space"`
-	FirstName    string                   `json:"first_name"`
-	LastName     string                   `json:"last_name"`
-	Patronymic   null.String              `json:"patronymic" swaggertype:"string"`
-	Occupation   null.String              `json:"occupation" swaggertype:"string"`
-	StartsAt     time.Time                `json:"starts_at"`
-	EndsAt       time.Time                `json:"ends_at"`
-	Purpose      string                   `json:"purpose"`
-	PeopleCount  int                      `json:"people_count"`
-	RejectReason *BookingRejectReason     `json:"reject_reason"`
-	Decision     *BookingDecision         `json:"decision"`
-	CancelledBy  *entities.CancelActor    `json:"cancelled_by"`
-	CreatedAt    time.Time                `json:"created_at"`
-	Actions      []entities.BookingAction `json:"actions"`
+	BookingID         int64                    `json:"booking_id"`
+	Status            entities.BookingStatus   `json:"status"`
+	Space             BookingSpace             `json:"space"`
+	FirstName         string                   `json:"first_name"`
+	LastName          string                   `json:"last_name"`
+	Patronymic        null.String              `json:"patronymic" swaggertype:"string"`
+	Occupation        null.String              `json:"occupation" swaggertype:"string"`
+	Title             string                   `json:"title"`
+	StartsAt          time.Time                `json:"starts_at"`
+	EndsAt            time.Time                `json:"ends_at"`
+	Purpose           string                   `json:"purpose"`
+	PeopleCount       int                      `json:"people_count"`
+	RejectReason      *BookingRejectReason     `json:"reject_reason"`
+	Decision          *BookingDecision         `json:"decision"`
+	CancelledBy       *entities.CancelActor    `json:"cancelled_by"`
+	RescheduledFromID null.Int                 `json:"rescheduled_from_id,omitempty" swaggertype:"integer"`
+	CreatedAt         time.Time                `json:"created_at"`
+	Actions           []entities.BookingAction `json:"actions"`
 }
 
 type BookingList struct {
 	Items      []Booking `json:"items"`
 	NextCursor *string   `json:"next_cursor"`
+}
+
+type BookingFeed struct {
+	WeekTotal int       `json:"week_total"`
+	Featured  *Booking  `json:"featured"`
+	Items     []Booking `json:"items"`
 }
 
 func NewBooking(in entities.Booking, space *entities.Space, decidedBy *entities.User, now time.Time) Booking {
@@ -83,19 +92,21 @@ func NewBooking(in entities.Booking, space *entities.Space, decidedBy *entities.
 	}
 
 	out := Booking{
-		BookingID:   in.BookingID,
-		Status:      in.CurrentStatus(now),
-		Space:       spaceView,
-		FirstName:   in.FirstName,
-		LastName:    in.LastName,
-		Patronymic:  in.Patronymic,
-		Occupation:  in.Occupation,
-		StartsAt:    in.StartsAt,
-		EndsAt:      in.EndsAt,
-		Purpose:     in.Purpose,
-		PeopleCount: in.PeopleCount,
-		CreatedAt:   in.CreatedAt,
-		Actions:     in.StudentActions(now),
+		BookingID:         in.BookingID,
+		Status:            in.CurrentStatus(now),
+		Space:             spaceView,
+		FirstName:         in.FirstName,
+		LastName:          in.LastName,
+		Patronymic:        in.Patronymic,
+		Occupation:        in.Occupation,
+		Title:             in.Title,
+		StartsAt:          in.StartsAt,
+		EndsAt:            in.EndsAt,
+		Purpose:           in.Purpose,
+		PeopleCount:       in.PeopleCount,
+		RescheduledFromID: in.RescheduledFromID,
+		CreatedAt:         in.CreatedAt,
+		Actions:           in.StudentActions(now),
 	}
 	if in.RejectReason != nil {
 		out.RejectReason = &BookingRejectReason{

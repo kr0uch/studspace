@@ -6,6 +6,7 @@ SELECT
     last_name,
     patronymic,
     occupation,
+    title,
     starts_at,
     ends_at,
     purpose,
@@ -22,6 +23,7 @@ SELECT
     updated_at
 FROM bookings
 WHERE status = $1::booking_status
+  AND ($5::timestamptz IS NULL OR starts_at > $5)
   AND ($2::timestamptz IS NULL OR (created_at, booking_id) > ($2, $3))
 ORDER BY created_at ASC, booking_id ASC
 LIMIT $4;

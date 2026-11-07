@@ -1,6 +1,8 @@
 package api
 
-import "github.com/guregu/null/v6"
+import (
+	"github.com/guregu/null/v6"
+)
 
 type SyncUserRequest struct {
 	FirstName string      `json:"first_name"`

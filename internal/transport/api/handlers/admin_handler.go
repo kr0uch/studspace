@@ -15,18 +15,12 @@ import (
 
 type AdminBookingService interface {
 	ListAdminBookings(ctx context.Context, actor entities.User, in dto.ListAdminBookings) ([]entities.Booking, *string, error)
-	CountBookingsByStatus(ctx context.Context, actor entities.User, status entities.BookingStatus) (int, error)
+	CountBookingsByStatus(ctx context.Context, actor entities.User, status entities.BookingStatus, now time.Time) (int, error)
 	GetSlotOverlaps(ctx context.Context, actor entities.User, in dto.GetSlotOverlaps) (*dto.SlotOverlaps, error)
 	ApproveBooking(ctx context.Context, actor entities.User, bookingID int64, now time.Time) (*entities.Booking, error)
 	RejectBooking(ctx context.Context, actor entities.User, bookingID int64, reason entities.RejectReason, now time.Time) (*entities.Booking, error)
 	CancelBookingByAdmin(ctx context.Context, actor entities.User, bookingID int64, now time.Time) (*entities.Booking, error)
 	ReturnBookingToReview(ctx context.Context, actor entities.User, bookingID int64, now time.Time) (*entities.Booking, error)
-}
-
-type AdminEventService interface {
-	CreateEvent(ctx context.Context, actor entities.User, in dto.CreateEvent, now time.Time) (*entities.Event, error)
-	UpdateEvent(ctx context.Context, actor entities.User, eventID int64, in dto.CreateEvent, now time.Time) (*entities.Event, error)
-	CancelEvent(ctx context.Context, actor entities.User, eventID int64) (*entities.Event, error)
 }
 
 type AdminSpaceService interface {
@@ -39,20 +33,17 @@ type AdminUserService interface {
 
 type AdminController struct {
 	bookingService AdminBookingService
-	eventService   AdminEventService
 	spaceService   AdminSpaceService
 	userService    AdminUserService
 }
 
 func NewAdminController(
 	bookingService AdminBookingService,
-	eventService AdminEventService,
 	spaceService AdminSpaceService,
 	userService AdminUserService,
 ) *AdminController {
 	return &AdminController{
 		bookingService: bookingService,
-		eventService:   eventService,
 		spaceService:   spaceService,
 		userService:    userService,
 	}
@@ -87,6 +78,7 @@ func (c *AdminController) ListAdminBookingsHandler(w http.ResponseWriter, r *htt
 	now := time.Now()
 	bookings, nextCursor, err := c.bookingService.ListAdminBookings(r.Context(), *user, dto.ListAdminBookings{
 		Tab:    tab,
+		Now:    now,
 		Cursor: r.URL.Query().Get("cursor"),
 		Limit:  limit,
 	})
@@ -94,7 +86,7 @@ func (c *AdminController) ListAdminBookingsHandler(w http.ResponseWriter, r *htt
 		return err
 	}
 
-	newCount, err := c.bookingService.CountBookingsByStatus(r.Context(), *user, entities.BookingStatusPending)
+	newCount, err := c.bookingService.CountBookingsByStatus(r.Context(), *user, entities.BookingStatusPending, now)
 	if err != nil {
 		return err
 	}
@@ -277,143 +269,6 @@ func (c *AdminController) ReturnBookingToReviewHandler(w http.ResponseWriter, r 
 		return err
 	}
 	return json.NewEncoder(w).Encode(out)
-}
-
-// CreateEventHandler godoc
-// @Summary Админ: создать мероприятие
-// @Tags Админ
-// @Accept json
-// @Produce json
-// @Security VKAuth
-// @Param request body api.CreateEventRequest true "Мероприятие"
-// @Success 201 {object} api.Event
-// @Failure 400 {object} errors.ErrorResponse
-// @Failure 401 {object} errors.ErrorResponse
-// @Failure 403 {object} errors.ErrorResponse
-// @Failure 409 {object} errors.ErrorResponse
-// @Failure 422 {object} errors.ErrorResponse
-// @Failure 500 {object} errors.ErrorResponse
-// @Router /admin/events [post]
-func (c *AdminController) CreateEventHandler(w http.ResponseWriter, r *http.Request) error {
-	user, err := web.GetUserFromCtx(r.Context())
-	if err != nil {
-		return err
-	}
-
-	var in api.CreateEventRequest
-	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		return errors.ErrBadRequest
-	}
-
-	event, err := c.eventService.CreateEvent(r.Context(), *user, dto.CreateEvent{
-		Title:       in.Title,
-		Organizer:   in.Organizer,
-		Category:    in.Category,
-		SpaceID:     in.SpaceID,
-		StartsAt:    in.StartsAt,
-		EndsAt:      in.EndsAt,
-		Capacity:    in.Capacity,
-		Description: in.Description,
-	}, time.Now())
-	if err != nil {
-		return err
-	}
-
-	spaceName := ""
-	if space, err := c.spaceService.GetSpaceByID(r.Context(), event.SpaceID); err == nil {
-		spaceName = space.Name
-	}
-
-	w.WriteHeader(http.StatusCreated)
-	return json.NewEncoder(w).Encode(api.NewEvent(*event, spaceName))
-}
-
-// UpdateEventHandler godoc
-// @Summary Админ: изменить мероприятие
-// @Tags Админ
-// @Accept json
-// @Produce json
-// @Security VKAuth
-// @Param id path int true "event_id"
-// @Param request body api.CreateEventRequest true "То же тело, что при создании"
-// @Success 200 {object} api.Event
-// @Failure 400 {object} errors.ErrorResponse
-// @Failure 401 {object} errors.ErrorResponse
-// @Failure 403 {object} errors.ErrorResponse
-// @Failure 409 {object} errors.ErrorResponse
-// @Failure 422 {object} errors.ErrorResponse
-// @Failure 500 {object} errors.ErrorResponse
-// @Router /admin/events/{id} [patch]
-func (c *AdminController) UpdateEventHandler(w http.ResponseWriter, r *http.Request) error {
-	user, err := web.GetUserFromCtx(r.Context())
-	if err != nil {
-		return err
-	}
-
-	eventID, err := parseInt64ID(r.PathValue("id"), "id")
-	if err != nil {
-		return err
-	}
-
-	var in api.CreateEventRequest
-	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		return errors.ErrBadRequest
-	}
-
-	event, err := c.eventService.UpdateEvent(r.Context(), *user, eventID, dto.CreateEvent{
-		Title:       in.Title,
-		Organizer:   in.Organizer,
-		Category:    in.Category,
-		SpaceID:     in.SpaceID,
-		StartsAt:    in.StartsAt,
-		EndsAt:      in.EndsAt,
-		Capacity:    in.Capacity,
-		Description: in.Description,
-	}, time.Now())
-	if err != nil {
-		return err
-	}
-
-	spaceName := ""
-	if space, err := c.spaceService.GetSpaceByID(r.Context(), event.SpaceID); err == nil {
-		spaceName = space.Name
-	}
-	return json.NewEncoder(w).Encode(api.NewEvent(*event, spaceName))
-}
-
-// CancelEventHandler godoc
-// @Summary Админ: отменить мероприятие
-// @Tags Админ
-// @Produce json
-// @Security VKAuth
-// @Param id path int true "event_id"
-// @Success 200 {object} api.Event
-// @Failure 401 {object} errors.ErrorResponse
-// @Failure 403 {object} errors.ErrorResponse
-// @Failure 409 {object} errors.ErrorResponse
-// @Failure 500 {object} errors.ErrorResponse
-// @Router /admin/events/{id}/cancel [post]
-func (c *AdminController) CancelEventHandler(w http.ResponseWriter, r *http.Request) error {
-	user, err := web.GetUserFromCtx(r.Context())
-	if err != nil {
-		return err
-	}
-
-	eventID, err := parseInt64ID(r.PathValue("id"), "id")
-	if err != nil {
-		return err
-	}
-
-	event, err := c.eventService.CancelEvent(r.Context(), *user, eventID)
-	if err != nil {
-		return err
-	}
-
-	spaceName := ""
-	if space, err := c.spaceService.GetSpaceByID(r.Context(), event.SpaceID); err == nil {
-		spaceName = space.Name
-	}
-	return json.NewEncoder(w).Encode(api.NewEvent(*event, spaceName))
 }
 
 func (c *AdminController) adminBookingView(

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/guregu/null/v6"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/kr0uch/studspace/internal/core/models/dao"
 	"github.com/kr0uch/studspace/internal/core/models/entities"
@@ -28,6 +29,7 @@ func (r *BookingRepository) CreateBooking(ctx context.Context, booking entities.
 		booking.LastName,
 		booking.Patronymic,
 		booking.Occupation,
+		booking.Title,
 		booking.StartsAt,
 		booking.EndsAt,
 		booking.Purpose,
@@ -61,28 +63,28 @@ func (r *BookingRepository) ListUserBookings(ctx context.Context, userID int64, 
 	}
 }
 
-func (r *BookingRepository) ListAdminBookings(ctx context.Context, tab entities.AdminBookingTab, cursorAt *time.Time, cursorID int64, limit int) ([]entities.Booking, error) {
+func (r *BookingRepository) ListAdminBookings(ctx context.Context, tab entities.AdminBookingTab, now time.Time, cursorAt *time.Time, cursorID int64, limit int) ([]entities.Booking, error) {
 	switch tab {
 	case entities.AdminBookingTabApproved:
 		return r.listBookings(ctx, qBookingListAdminApproved, cursorAt, cursorID, pgLimit(limit))
 	case entities.AdminBookingTabRejected:
-		return r.listBookings(ctx, qBookingListAdmin, string(entities.BookingStatusRejected), cursorAt, cursorID, pgLimit(limit))
+		return r.listBookings(ctx, qBookingListAdmin, string(entities.BookingStatusRejected), cursorAt, cursorID, pgLimit(limit), nil)
 	default:
-		return r.listBookings(ctx, qBookingListAdmin, string(entities.BookingStatusPending), cursorAt, cursorID, pgLimit(limit))
+		return r.listBookings(ctx, qBookingListAdmin, string(entities.BookingStatusPending), cursorAt, cursorID, pgLimit(limit), now)
 	}
 }
 
-func (r *BookingRepository) CountPendingBookingsByUser(ctx context.Context, userID int64) (int, error) {
+func (r *BookingRepository) CountPendingBookingsByUser(ctx context.Context, userID int64, now time.Time) (int, error) {
 	var count int
-	if err := r.postgresDB.GetContext(ctx, &count, qBookingCountPendingByUser, userID); err != nil {
+	if err := r.postgresDB.GetContext(ctx, &count, qBookingCountPendingByUser, userID, now); err != nil {
 		return 0, wrapErr(err)
 	}
 	return count, nil
 }
 
-func (r *BookingRepository) CountBookingsByStatus(ctx context.Context, status entities.BookingStatus) (int, error) {
+func (r *BookingRepository) CountBookingsByStatus(ctx context.Context, status entities.BookingStatus, now time.Time) (int, error) {
 	var count int
-	if err := r.postgresDB.GetContext(ctx, &count, qBookingCountByStatus, string(status)); err != nil {
+	if err := r.postgresDB.GetContext(ctx, &count, qBookingCountByStatus, string(status), now); err != nil {
 		return 0, wrapErr(err)
 	}
 	return count, nil
@@ -112,39 +114,60 @@ func (r *BookingRepository) ListBusyBookingDays(ctx context.Context, from, to ti
 }
 
 func (r *BookingRepository) ApproveBooking(ctx context.Context, bookingID, actorUserID int64, now time.Time) (*entities.Booking, error) {
-	return r.transitionBooking(ctx, bookingID, actorUserID, entities.BookingStatusApproved, now, null.String{}, func() (*dao.Booking, error) {
-		return r.getBooking(ctx, qBookingApprove, bookingID, actorUserID)
-	})
+	return r.transitionBooking(ctx, bookingID, actorUserID, entities.BookingStatusApproved, now, null.String{}, qBookingApprove, bookingID, actorUserID)
 }
 
 func (r *BookingRepository) RejectBooking(ctx context.Context, bookingID, actorUserID int64, now time.Time, reason entities.RejectReason) (*entities.Booking, error) {
-	return r.transitionBooking(ctx, bookingID, actorUserID, entities.BookingStatusRejected, now, null.StringFrom(reason.Text), func() (*dao.Booking, error) {
-		return r.getBooking(ctx, qBookingReject, bookingID, actorUserID, reason.Title, reason.Text)
-	})
+	return r.transitionBooking(ctx, bookingID, actorUserID, entities.BookingStatusRejected, now, null.StringFrom(reason.Text), qBookingReject, bookingID, actorUserID, reason.Title, reason.Text)
 }
 
 func (r *BookingRepository) WithdrawBooking(ctx context.Context, bookingID, actorUserID int64, now time.Time) (*entities.Booking, error) {
-	return r.transitionBooking(ctx, bookingID, actorUserID, entities.BookingStatusWithdrawn, now, null.String{}, func() (*dao.Booking, error) {
-		return r.getBooking(ctx, qBookingWithdraw, bookingID)
-	})
+	return r.transitionBooking(ctx, bookingID, actorUserID, entities.BookingStatusWithdrawn, now, null.String{}, qBookingWithdraw, bookingID)
 }
 
 func (r *BookingRepository) CancelBooking(ctx context.Context, bookingID, actorUserID int64, now time.Time, actor entities.CancelActor) (*entities.Booking, error) {
-	return r.transitionBooking(ctx, bookingID, actorUserID, entities.BookingStatusCancelled, now, null.String{}, func() (*dao.Booking, error) {
-		return r.getBooking(ctx, qBookingCancel, bookingID, string(actor))
-	})
+	return r.transitionBooking(ctx, bookingID, actorUserID, entities.BookingStatusCancelled, now, null.String{}, qBookingCancel, bookingID, string(actor))
 }
 
 func (r *BookingRepository) ReturnBookingToReview(ctx context.Context, bookingID, actorUserID int64, now time.Time) (*entities.Booking, error) {
-	return r.transitionBooking(ctx, bookingID, actorUserID, entities.BookingStatusPending, now, null.String{}, func() (*dao.Booking, error) {
-		return r.getBooking(ctx, qBookingReturnToReview, bookingID)
-	})
+	return r.transitionBooking(ctx, bookingID, actorUserID, entities.BookingStatusPending, now, null.String{}, qBookingReturnToReview, bookingID)
+}
+
+func (r *BookingRepository) HasPendingReschedule(ctx context.Context, bookingID int64) (bool, error) {
+	var exists bool
+	if err := r.postgresDB.GetContext(ctx, &exists, qBookingHasPendingReschedule, bookingID); err != nil {
+		return false, wrapErr(err)
+	}
+	return exists, nil
 }
 
 func (r *BookingRepository) RescheduleBooking(ctx context.Context, bookingID, actorUserID int64, now time.Time, spaceID int16, startsAt, endsAt time.Time) (*entities.Booking, error) {
-	return r.transitionBooking(ctx, bookingID, actorUserID, entities.BookingStatusPending, now, null.String{}, func() (*dao.Booking, error) {
-		return r.getBooking(ctx, qBookingReschedule, bookingID, spaceID, startsAt, endsAt)
-	})
+	tx, err := r.postgresDB.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, wrapErr(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var source dao.Booking
+	if err := tx.GetContext(ctx, &source, qBookingGetByIDForUpdate, bookingID); err != nil {
+		return nil, wrapErr(err)
+	}
+	if source.ToEntity().CurrentStatus(now) != entities.BookingStatusApproved {
+		return nil, errors.ErrInvalidTransition
+	}
+
+	var created dao.Booking
+	if err := tx.GetContext(ctx, &created, qBookingReschedule, bookingID, spaceID, startsAt, endsAt); err != nil {
+		return nil, wrapErr(err)
+	}
+	if _, err := tx.ExecContext(ctx, qBookingInsertStatusLog, created.BookingID, nil, string(entities.BookingStatusPending), actorUserID, null.String{}); err != nil {
+		return nil, wrapErr(err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, wrapErr(err)
+	}
+	result := created.ToEntity()
+	return &result, nil
 }
 
 func (r *BookingRepository) transitionBooking(
@@ -153,25 +176,56 @@ func (r *BookingRepository) transitionBooking(
 	next entities.BookingStatus,
 	now time.Time,
 	comment null.String,
-	apply func() (*dao.Booking, error),
+	query string,
+	args ...any,
 ) (*entities.Booking, error) {
-	current, err := r.GetBookingByID(ctx, bookingID)
+	tx, err := r.postgresDB.BeginTxx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, wrapErr(err)
 	}
+	defer func() { _ = tx.Rollback() }()
+
+	var currentRow dao.Booking
+	if err := tx.GetContext(ctx, &currentRow, qBookingGetByIDForUpdate, bookingID); err != nil {
+		return nil, wrapErr(err)
+	}
+	current := currentRow.ToEntity()
 	if !current.CurrentStatus(now).CanTransitionTo(next) {
 		return nil, errors.ErrInvalidTransition
 	}
-
-	row, err := apply()
-	if err != nil {
-		return nil, err
+	if next == entities.BookingStatusApproved && current.RescheduledFromID.Valid {
+		if err := cancelApprovedSource(ctx, tx, current.RescheduledFromID.Int64, actorUserID); err != nil {
+			return nil, err
+		}
 	}
-	if err := r.insertBookingStatusLog(ctx, bookingID, &current.Status, next, actorUserID, comment); err != nil {
-		return nil, err
+
+	var row dao.Booking
+	if err := tx.GetContext(ctx, &row, query, args...); err != nil {
+		return nil, wrapErr(err)
+	}
+	if _, err := tx.ExecContext(ctx, qBookingInsertStatusLog, bookingID, string(current.Status), string(next), actorUserID, comment); err != nil {
+		return nil, wrapErr(err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, wrapErr(err)
 	}
 	result := row.ToEntity()
 	return &result, nil
+}
+
+func cancelApprovedSource(ctx context.Context, tx *sqlx.Tx, sourceID, actorUserID int64) error {
+	var source dao.Booking
+	if err := tx.GetContext(ctx, &source, qBookingGetByIDForUpdate, sourceID); err != nil {
+		return wrapErr(err)
+	}
+	if source.Status != string(entities.BookingStatusApproved) {
+		return nil
+	}
+	if err := tx.GetContext(ctx, &source, qBookingCancel, sourceID, string(entities.CancelActorUser)); err != nil {
+		return wrapErr(err)
+	}
+	_, err := tx.ExecContext(ctx, qBookingInsertStatusLog, sourceID, string(entities.BookingStatusApproved), string(entities.BookingStatusCancelled), actorUserID, null.String{})
+	return wrapErr(err)
 }
 
 func (r *BookingRepository) insertBookingStatusLog(ctx context.Context, bookingID int64, from *entities.BookingStatus, to entities.BookingStatus, actorUserID int64, comment null.String) error {

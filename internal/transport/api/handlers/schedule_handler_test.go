@@ -36,24 +36,6 @@ func (m *mockScheduleBookingService) ListBusyBookingDays(ctx context.Context, mo
 	return args.Get(0).([]time.Time), args.Error(1)
 }
 
-type mockScheduleEventService struct{ mock.Mock }
-
-func (m *mockScheduleEventService) ListEventsInRange(ctx context.Context, from, to time.Time) ([]entities.Event, error) {
-	args := m.Called(ctx, from, to)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]entities.Event), args.Error(1)
-}
-
-func (m *mockScheduleEventService) ListBusyEventDays(ctx context.Context, month time.Time) ([]time.Time, error) {
-	args := m.Called(ctx, month)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]time.Time), args.Error(1)
-}
-
 type mockScheduleSpaceService struct{ mock.Mock }
 
 func (m *mockScheduleSpaceService) ListActiveSpaces(ctx context.Context) ([]entities.Space, error) {
@@ -66,8 +48,10 @@ func (m *mockScheduleSpaceService) ListActiveSpaces(ctx context.Context) ([]enti
 
 func TestScheduleController_GetScheduleHandler(t *testing.T) {
 	user := testHandlerUser()
-	day := time.Date(2026, 11, 1, 0, 0, 0, 0, utils.Moscow)
+	tomorrow := time.Now().In(utils.Moscow).Add(24 * time.Hour)
+	day := time.Date(tomorrow.Year(), tomorrow.Month(), tomorrow.Day(), 0, 0, 0, 0, utils.Moscow)
 	from, to := utils.DayRange(day)
+	date := day.Format("2006-01-02")
 
 	t.Run("failure (bad from)", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/schedule?from=&to=2026-11-01", nil)
@@ -75,44 +59,38 @@ func TestScheduleController_GetScheduleHandler(t *testing.T) {
 		err := NewScheduleController(
 			new(mockScheduleSpaceService),
 			new(mockScheduleBookingService),
-			new(mockScheduleEventService),
 		).GetScheduleHandler(httptest.NewRecorder(), req)
 		assert.ErrorIs(t, err, errors.ErrValidation)
 	})
 
-	t.Run("hides foreign pending", func(t *testing.T) {
+	t.Run("shows foreign pending", func(t *testing.T) {
 		spaces := new(mockScheduleSpaceService)
 		bookings := new(mockScheduleBookingService)
-		events := new(mockScheduleEventService)
 		spaces.On("ListActiveSpaces", mock.Anything).Return([]entities.Space{{
 			SpaceID: 1, Name: "A", Capacity: 10, Color: "#000",
 		}}, nil)
 		bookings.On("ListBookingsInRange", mock.Anything, from, to).Return([]entities.Booking{
 			{
-				BookingID: 1, UserID: user.UserID, SpaceID: 1, Purpose: "Моя",
+				BookingID: 1, UserID: user.UserID, SpaceID: 1, Title: "Моя",
 				Status: entities.BookingStatusPending, FirstName: "Иван", LastName: "Иванов",
 				StartsAt: from.Add(10 * time.Hour), EndsAt: from.Add(12 * time.Hour),
 			},
 			{
-				BookingID: 2, UserID: 99, SpaceID: 1, Purpose: "Чужая",
+				BookingID: 2, UserID: 99, SpaceID: 1, Title: "Чужая",
 				Status: entities.BookingStatusPending, FirstName: "Пётр", LastName: "Петров",
 				StartsAt: from.Add(13 * time.Hour), EndsAt: from.Add(14 * time.Hour),
 			},
 			{
-				BookingID: 3, UserID: 99, SpaceID: 1, Purpose: "Чужая ок",
+				BookingID: 3, UserID: 99, SpaceID: 1, Title: "Чужая ок",
 				Status: entities.BookingStatusApproved, FirstName: "Пётр", LastName: "Петров",
 				StartsAt: from.Add(15 * time.Hour), EndsAt: from.Add(16 * time.Hour),
 			},
 		}, nil)
-		events.On("ListEventsInRange", mock.Anything, from, to).Return([]entities.Event{{
-			EventID: 7, SpaceID: 1, Title: "Митап", Organizer: "Студсовет",
-			StartsAt: from.Add(18 * time.Hour), EndsAt: from.Add(19 * time.Hour),
-		}}, nil)
 
-		req := httptest.NewRequest(http.MethodGet, "/schedule?from=2026-11-01&to=2026-11-01", nil)
+		req := httptest.NewRequest(http.MethodGet, "/schedule?from="+date+"&to="+date, nil)
 		req = req.WithContext(web.ContextWithUser(req.Context(), user))
 		w := httptest.NewRecorder()
-		err := NewScheduleController(spaces, bookings, events).GetScheduleHandler(w, req)
+		err := NewScheduleController(spaces, bookings).GetScheduleHandler(w, req)
 		require.NoError(t, err)
 
 		var got api.Schedule
@@ -120,14 +98,15 @@ func TestScheduleController_GetScheduleHandler(t *testing.T) {
 		require.Len(t, got.Items, 3)
 		assert.Equal(t, int64(1), got.Items[0].BookingID)
 		assert.True(t, got.Items[0].IsMine)
-		assert.Equal(t, int64(3), got.Items[1].BookingID)
+		assert.Equal(t, "Моя", got.Items[0].Title)
+		assert.Equal(t, int64(2), got.Items[1].BookingID)
 		assert.False(t, got.Items[1].IsMine)
-		assert.Equal(t, "event", got.Items[2].Type)
-		assert.Equal(t, int64(7), got.Items[2].EventID)
+		assert.Equal(t, entities.BookingStatusPending, got.Items[1].Status)
+		assert.Equal(t, int64(3), got.Items[2].BookingID)
+		assert.False(t, got.Items[2].IsMine)
 		assert.Equal(t, "A", got.Spaces[0].Name)
 		spaces.AssertExpectations(t)
 		bookings.AssertExpectations(t)
-		events.AssertExpectations(t)
 	})
 }
 
@@ -137,23 +116,20 @@ func TestScheduleController_GetBusyDaysHandler(t *testing.T) {
 		err := NewScheduleController(
 			new(mockScheduleSpaceService),
 			new(mockScheduleBookingService),
-			new(mockScheduleEventService),
 		).GetBusyDaysHandler(httptest.NewRecorder(), req)
 		assert.ErrorIs(t, err, errors.ErrValidation)
 	})
 
-	t.Run("merges unique days", func(t *testing.T) {
+	t.Run("unique days", func(t *testing.T) {
 		month := time.Date(2026, 11, 1, 0, 0, 0, 0, utils.Moscow)
 		d1 := time.Date(2026, 11, 1, 0, 0, 0, 0, utils.Moscow)
 		d2 := time.Date(2026, 11, 2, 0, 0, 0, 0, utils.Moscow)
 		bookings := new(mockScheduleBookingService)
-		events := new(mockScheduleEventService)
-		bookings.On("ListBusyBookingDays", mock.Anything, month).Return([]time.Time{d1, d2}, nil)
-		events.On("ListBusyEventDays", mock.Anything, month).Return([]time.Time{d2}, nil)
+		bookings.On("ListBusyBookingDays", mock.Anything, month).Return([]time.Time{d1, d2, d2}, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/calendar/busy-days?month=2026-11", nil)
 		w := httptest.NewRecorder()
-		err := NewScheduleController(new(mockScheduleSpaceService), bookings, events).GetBusyDaysHandler(w, req)
+		err := NewScheduleController(new(mockScheduleSpaceService), bookings).GetBusyDaysHandler(w, req)
 		require.NoError(t, err)
 
 		var got struct {
@@ -164,6 +140,5 @@ func TestScheduleController_GetBusyDaysHandler(t *testing.T) {
 		assert.Equal(t, "2026-11", got.Month)
 		assert.Equal(t, []string{"2026-11-01", "2026-11-02"}, got.Days)
 		bookings.AssertExpectations(t)
-		events.AssertExpectations(t)
 	})
 }

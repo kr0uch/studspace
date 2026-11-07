@@ -10,6 +10,7 @@ type CreateBooking struct {
 	SpaceID     int16
 	StartsAt    time.Time
 	EndsAt      time.Time
+	Title       string
 	Purpose     string
 	PeopleCount int
 }
@@ -36,6 +37,7 @@ type ListUserBookings struct {
 
 type ListAdminBookings struct {
 	Tab    entities.AdminBookingTab
+	Now    time.Time
 	Cursor string
 	Limit  int
 }
@@ -50,9 +52,8 @@ type GetSlotOverlaps struct {
 type SlotOverlaps struct {
 	Pending  []entities.Booking
 	Approved []entities.Booking
-	Events   []entities.Event
 }
 
 func (o SlotOverlaps) HardConflict() bool {
-	return len(o.Approved) > 0 || len(o.Events) > 0
+	return len(o.Approved) > 0
 }

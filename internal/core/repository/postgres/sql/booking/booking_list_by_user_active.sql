@@ -6,6 +6,7 @@ SELECT
     last_name,
     patronymic,
     occupation,
+    title,
     starts_at,
     ends_at,
     purpose,
@@ -22,7 +23,7 @@ SELECT
     updated_at
 FROM bookings
 WHERE user_id = $1
-  AND (status = 'pending' OR (status = 'approved' AND ends_at > $2))
+  AND ((status = 'pending' AND starts_at > $2) OR (status = 'approved' AND ends_at > $2))
   AND ($3::timestamptz IS NULL OR (starts_at, booking_id) > ($3, $4))
 ORDER BY starts_at ASC, booking_id ASC
 LIMIT $5;

@@ -17,11 +17,6 @@ type ScheduleBookingService interface {
 	ListBusyBookingDays(ctx context.Context, month time.Time) ([]time.Time, error)
 }
 
-type ScheduleEventService interface {
-	ListEventsInRange(ctx context.Context, from, to time.Time) ([]entities.Event, error)
-	ListBusyEventDays(ctx context.Context, month time.Time) ([]time.Time, error)
-}
-
 type ScheduleSpaceService interface {
 	ListActiveSpaces(ctx context.Context) ([]entities.Space, error)
 }
@@ -29,20 +24,18 @@ type ScheduleSpaceService interface {
 type ScheduleController struct {
 	spaceService   ScheduleSpaceService
 	bookingService ScheduleBookingService
-	eventService   ScheduleEventService
 }
 
-func NewScheduleController(spaceService ScheduleSpaceService, bookingService ScheduleBookingService, eventService ScheduleEventService) *ScheduleController {
+func NewScheduleController(spaceService ScheduleSpaceService, bookingService ScheduleBookingService) *ScheduleController {
 	return &ScheduleController{
 		spaceService:   spaceService,
 		bookingService: bookingService,
-		eventService:   eventService,
 	}
 }
 
 // GetScheduleHandler godoc
 // @Summary Расписание
-// @Description Брони и мероприятия в диапазоне дат. Чужие pending скрыты.
+// @Description Брони в диапазоне дат: свои и чужие pending и approved.
 // @Tags Расписание
 // @Produce json
 // @Security VKAuth
@@ -74,39 +67,19 @@ func (c *ScheduleController) GetScheduleHandler(w http.ResponseWriter, r *http.R
 		return err
 	}
 
-	events, err := c.eventService.ListEventsInRange(r.Context(), from, to)
-	if err != nil {
-		return err
-	}
-
 	now := time.Now()
-	items := make([]api.ScheduleItem, 0, len(bookings)+len(events))
+	items := make([]api.ScheduleItem, 0, len(bookings))
 	for _, booking := range bookings {
 		isMine := booking.UserID == user.UserID
-		if booking.Status == entities.BookingStatusPending && !isMine {
-			continue
-		}
 		items = append(items, api.ScheduleItem{
-			Type:      "booking",
 			BookingID: booking.BookingID,
 			SpaceID:   booking.SpaceID,
-			Title:     booking.Purpose,
+			Title:     booking.Title,
 			StartsAt:  booking.StartsAt,
 			EndsAt:    booking.EndsAt,
 			OwnerName: booking.FirstName + " " + booking.LastName,
 			Status:    booking.CurrentStatus(now),
 			IsMine:    isMine,
-		})
-	}
-	for _, event := range events {
-		items = append(items, api.ScheduleItem{
-			Type:      "event",
-			EventID:   event.EventID,
-			SpaceID:   event.SpaceID,
-			Title:     event.Title,
-			StartsAt:  event.StartsAt,
-			EndsAt:    event.EndsAt,
-			Organizer: event.Organizer,
 		})
 	}
 
@@ -125,7 +98,7 @@ func (c *ScheduleController) GetScheduleHandler(w http.ResponseWriter, r *http.R
 
 // GetBusyDaysHandler godoc
 // @Summary Занятые дни календаря
-// @Description Дни месяца с pending/approved бронями или published мероприятиями.
+// @Description Дни месяца с pending или approved бронями.
 // @Tags Расписание
 // @Produce json
 // @Security VKAuth
@@ -141,32 +114,25 @@ func (c *ScheduleController) GetBusyDaysHandler(w http.ResponseWriter, r *http.R
 		return err
 	}
 
-	bookingDays, err := c.bookingService.ListBusyBookingDays(r.Context(), month)
-	if err != nil {
-		return err
-	}
-	eventDays, err := c.eventService.ListBusyEventDays(r.Context(), month)
+	days, err := c.bookingService.ListBusyBookingDays(r.Context(), month)
 	if err != nil {
 		return err
 	}
 
 	return json.NewEncoder(w).Encode(api.BusyDays{
 		Month: month,
-		Days:  mergeDays(bookingDays, eventDays),
+		Days:  uniqueDays(days),
 	})
 }
 
-func mergeDays(parts ...[]time.Time) []time.Time {
-	seen := make(map[time.Time]bool)
-	for _, part := range parts {
-		for _, day := range part {
-			if !seen[day] {
-				seen[day] = true
-			}
+func uniqueDays(part []time.Time) []time.Time {
+	seen := make(map[time.Time]bool, len(part))
+	days := make([]time.Time, 0, len(part))
+	for _, day := range part {
+		if seen[day] {
+			continue
 		}
-	}
-	days := make([]time.Time, 0, len(seen))
-	for day := range seen {
+		seen[day] = true
 		days = append(days, day)
 	}
 	sort.Slice(days, func(i, j int) bool {

@@ -15,15 +15,12 @@ type ScheduleSpace struct {
 }
 
 type ScheduleItem struct {
-	Type      string                 `json:"type"`
-	BookingID int64                  `json:"booking_id,omitempty"`
-	EventID   int64                  `json:"event_id,omitempty"`
+	BookingID int64                  `json:"booking_id"`
 	SpaceID   int16                  `json:"space_id"`
 	Title     string                 `json:"title"`
 	StartsAt  time.Time              `json:"starts_at"`
 	EndsAt    time.Time              `json:"ends_at"`
 	OwnerName string                 `json:"owner_name,omitempty"`
-	Organizer string                 `json:"organizer,omitempty"`
 	Status    entities.BookingStatus `json:"status,omitempty"`
 	IsMine    bool                   `json:"is_mine,omitempty"`
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/guregu/null/v6"
 	"github.com/kr0uch/studspace/internal/core/models/dto"
+	"github.com/kr0uch/studspace/internal/core/models/entities"
 	"github.com/kr0uch/studspace/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,7 +26,7 @@ func TestUserService_UpsertUserByVK(t *testing.T) {
 			name: "success",
 			in:   dto.UpsertUserByVK{VKUserID: 100, FirstName: " Иван ", LastName: " Иванов "},
 			mockBehavior: func(repo *mockUserRepository) {
-				repo.On("UpsertUserByVKID", ctx, int64(100), "Иван", "Иванов", null.String{}).
+				repo.On("UpsertUserByVKID", ctx, int64(100), "Иван", "Иванов", null.String{}, entities.UserRoleStudent).
 					Return(&user, nil)
 			},
 		},
@@ -39,7 +40,7 @@ func TestUserService_UpsertUserByVK(t *testing.T) {
 			name: "failure (db)",
 			in:   dto.UpsertUserByVK{VKUserID: 100, FirstName: "Иван", LastName: "Иванов"},
 			mockBehavior: func(repo *mockUserRepository) {
-				repo.On("UpsertUserByVKID", ctx, int64(100), "Иван", "Иванов", null.String{}).
+				repo.On("UpsertUserByVKID", ctx, int64(100), "Иван", "Иванов", null.String{}, entities.UserRoleStudent).
 					Return(nil, errors.ErrInternal)
 			},
 			expectedError: errors.ErrInternal,
@@ -51,7 +52,7 @@ func TestUserService_UpsertUserByVK(t *testing.T) {
 			repo := new(mockUserRepository)
 			tt.mockBehavior(repo)
 
-			got, err := NewUserService(repo).UpsertUserByVK(ctx, tt.in)
+			got, err := NewUserService(repo, nil).UpsertUserByVK(ctx, tt.in)
 			if tt.expectedError != nil {
 				assert.ErrorIs(t, err, tt.expectedError)
 				assert.Nil(t, got)
@@ -62,6 +63,41 @@ func TestUserService_UpsertUserByVK(t *testing.T) {
 			repo.AssertExpectations(t)
 		})
 	}
+}
+
+func TestUserService_UpsertUserByVK_admin(t *testing.T) {
+	ctx := context.Background()
+	admin := testStudent()
+	admin.VKUserID = 777
+	admin.Role = entities.UserRoleAdmin
+
+	repo := new(mockUserRepository)
+	repo.On("UpsertUserByVKID", ctx, int64(777), "Иван", "Иванов", null.String{}, entities.UserRoleAdmin).
+		Return(&admin, nil)
+
+	got, err := NewUserService(repo, map[int64]struct{}{777: {}}).UpsertUserByVK(ctx, dto.UpsertUserByVK{
+		VKUserID: 777, FirstName: "Иван", LastName: "Иванов",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, entities.UserRoleAdmin, got.Role)
+	repo.AssertExpectations(t)
+}
+
+func TestUserService_UpsertUserByVK_removedFromAdmins(t *testing.T) {
+	ctx := context.Background()
+	user := testStudent()
+	user.VKUserID = 777
+
+	repo := new(mockUserRepository)
+	repo.On("UpsertUserByVKID", ctx, int64(777), "Иван", "Иванов", null.String{}, entities.UserRoleStudent).
+		Return(&user, nil)
+
+	got, err := NewUserService(repo, map[int64]struct{}{}).UpsertUserByVK(ctx, dto.UpsertUserByVK{
+		VKUserID: 777, FirstName: "Иван", LastName: "Иванов",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, entities.UserRoleStudent, got.Role)
+	repo.AssertExpectations(t)
 }
 
 func TestUserService_GetUserByID(t *testing.T) {
@@ -93,7 +129,7 @@ func TestUserService_GetUserByID(t *testing.T) {
 			repo := new(mockUserRepository)
 			tt.mockBehavior(repo)
 
-			got, err := NewUserService(repo).GetUserByID(ctx, 1)
+			got, err := NewUserService(repo, nil).GetUserByID(ctx, 1)
 			if tt.expectedError != nil {
 				assert.ErrorIs(t, err, tt.expectedError)
 				assert.Nil(t, got)
@@ -112,7 +148,7 @@ func TestUserService_GetUserByVKUserID(t *testing.T) {
 	repo := new(mockUserRepository)
 	repo.On("GetUserByVKUserID", ctx, int64(100)).Return(&user, nil)
 
-	got, err := NewUserService(repo).GetUserByVKUserID(ctx, 100)
+	got, err := NewUserService(repo, nil).GetUserByVKUserID(ctx, 100)
 	assert.NoError(t, err)
 	assert.Equal(t, &user, got)
 	repo.AssertExpectations(t)
@@ -125,7 +161,7 @@ func TestUserService_UpdateUserNotifications(t *testing.T) {
 	repo := new(mockUserRepository)
 	repo.On("UpdateUserNotifications", ctx, int64(1), false).Return(&user, nil)
 
-	got, err := NewUserService(repo).UpdateUserNotifications(ctx, dto.UpdateUserNotifications{UserID: 1, Allowed: false})
+	got, err := NewUserService(repo, nil).UpdateUserNotifications(ctx, dto.UpdateUserNotifications{UserID: 1, Allowed: false})
 	assert.NoError(t, err)
 	assert.Equal(t, &user, got)
 	repo.AssertExpectations(t)
@@ -144,7 +180,7 @@ func TestUserService_UpdateUser(t *testing.T) {
 		repo.On("UpdateUser", ctx, int64(1), null.StringFrom("Алексеевич"), null.StringFrom("Студент, 25ВВБ4")).
 			Return(&user, nil)
 
-		got, err := NewUserService(repo).UpdateUser(ctx, dto.UpdateUser{
+		got, err := NewUserService(repo, nil).UpdateUser(ctx, dto.UpdateUser{
 			UserID:     1,
 			Patronymic: null.StringFrom(" Алексеевич "),
 			Occupation: null.StringFrom(" Студент, 25ВВБ4 "),
@@ -155,7 +191,7 @@ func TestUserService_UpdateUser(t *testing.T) {
 	})
 
 	t.Run("failure (validation)", func(t *testing.T) {
-		got, err := NewUserService(new(mockUserRepository)).UpdateUser(ctx, dto.UpdateUser{
+		got, err := NewUserService(new(mockUserRepository), nil).UpdateUser(ctx, dto.UpdateUser{
 			UserID:     1,
 			Occupation: null.StringFrom(strings.Repeat("а", 151)),
 		})

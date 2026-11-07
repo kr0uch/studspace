@@ -18,7 +18,6 @@ const (
 	msgBookingRejected       = "Заявка на %s %s отклонена."
 	msgBookingRejectedReason = "Заявка на %s %s отклонена: %s"
 	msgBookingCancelled      = "Бронь %s %s отменена администратором."
-	msgWaitlistFreed         = "Освободилось место на «%s». Запишитесь в приложении."
 )
 
 func bookingApprovedMessage(spaceName string, booking entities.Booking) string {
@@ -35,10 +34,6 @@ func bookingRejectedMessage(spaceName string, booking entities.Booking, reason s
 
 func bookingCancelledMessage(spaceName string, booking entities.Booking) string {
 	return fmt.Sprintf(msgBookingCancelled, spaceName, formatSlot(booking.StartsAt, booking.EndsAt))
-}
-
-func waitlistFreedMessage(title string) string {
-	return fmt.Sprintf(msgWaitlistFreed, title)
 }
 
 func allowedVKUserIDs(users []entities.User) []int64 {

@@ -5,11 +5,12 @@ INSERT INTO bookings (
     last_name,
     patronymic,
     occupation,
+    title,
     starts_at,
     ends_at,
     purpose,
     people_count
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING
     booking_id,
     user_id,
@@ -18,6 +19,7 @@ RETURNING
     last_name,
     patronymic,
     occupation,
+    title,
     starts_at,
     ends_at,
     purpose,

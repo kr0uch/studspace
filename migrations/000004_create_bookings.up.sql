@@ -6,6 +6,7 @@ CREATE TABLE bookings (
     last_name           TEXT           NOT NULL,
     patronymic          TEXT,
     occupation          TEXT,
+    title               VARCHAR(150)   NOT NULL CHECK (char_length(title) > 0),
     starts_at           TIMESTAMPTZ    NOT NULL,
     ends_at             TIMESTAMPTZ    NOT NULL,
     period              TSTZRANGE      GENERATED ALWAYS AS (tstzrange(starts_at, ends_at, '[)')) STORED,
@@ -39,6 +40,9 @@ CREATE INDEX bookings_user_status_starts_idx ON bookings (user_id, status, start
 CREATE INDEX bookings_status_created_idx ON bookings (status, created_at);
 -- расписание и поиск конфликтов, в том числе среди pending
 CREATE INDEX bookings_space_period_idx ON bookings USING gist (space_id, period);
+CREATE UNIQUE INDEX bookings_one_pending_reschedule_idx
+    ON bookings (rescheduled_from_id)
+    WHERE status = 'pending' AND rescheduled_from_id IS NOT NULL;
 
 CREATE TRIGGER bookings_set_updated_at
     BEFORE UPDATE ON bookings
