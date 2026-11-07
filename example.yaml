@@ -15,8 +15,11 @@ server:
   host: localhost
   port: 8080
   prefix: /api/v1
+  cors_origins:
+  - http://localhost:8000
   swagger:
-    host: localhost
+    enabled: true
+    host: localhost:8080
     schema: http
 
 logger:
