@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -82,26 +81,18 @@ func parseVKLaunchParams(header string, secret []byte, now time.Time) (int64, er
 		return 0, errors.ErrInvalidSign
 	}
 
-	keys := make([]string, 0, len(values))
-	for key := range values {
+	signed := make(url.Values)
+	for key, vals := range values {
 		if strings.HasPrefix(key, "vk_") {
-			keys = append(keys, key)
+			signed[key] = vals
 		}
 	}
-	sort.Strings(keys)
-
-	var payload strings.Builder
-	for i, key := range keys {
-		if i > 0 {
-			payload.WriteByte('&')
-		}
-		payload.WriteString(key)
-		payload.WriteByte('=')
-		payload.WriteString(values.Get(key))
-	}
+	// Encode сортирует ключи и кодирует значения: запятая становится %2C.
+	// QueryEscape пишет пробел как «+», VK подписывает %20.
+	payload := strings.ReplaceAll(signed.Encode(), "+", "%20")
 
 	mac := hmac.New(sha256.New, secret)
-	_, _ = mac.Write([]byte(payload.String()))
+	_, _ = mac.Write([]byte(payload))
 	expected := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 	if !hmac.Equal([]byte(expected), []byte(sign)) {
 		return 0, errors.ErrInvalidSign
