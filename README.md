@@ -1,17 +1,19 @@
 # StudSpace
 
-HTTP API бэкенда VK Mini App: бронирование студенческих залов, запись на мероприятия и модерация заявок администратором.
+HTTP API бэкенда VK Mini App: бронирование студенческих залов и модерация заявок администратором.
 
 ## Features
 
 - Регистрация пользователя из VK launch params (`POST /auth/sync`); имя и фамилия только из VK
-- Профиль: отчество и должность/статус (`PATCH /me`)
-- Главная: сегодняшние брони и свои мероприятия
-- Брони залов: создание, список, отзыв, отмена, перенос, лимит pending
-- Модерация заявок админом (approve / reject / cancel / return-to-review)
-- Мероприятия: лента, запись, лист ожидания, уведомления VK
-- Расписание и занятость залов
-- HMAC-подпись launch params, без сессий и JWT
+- Главные админы — `admins.txt`. При `POST /auth/sync` id из файла получает `admin`, остальные — `student`; убранный id теряет роль при следующем входе. Пустой файл, файл только с комментариями и отсутствие файла — админов нет. Некорректная строка не даёт серверу стартовать
+- Профиль: отчество и должность (`PATCH /me`), флаг уведомлений (`PATCH /me/notifications`)
+- Главная: свои активные брони за сегодняшние сутки МСК и залы со статусом `free` / `busy` / `closed`
+- Бронь: `title` и `purpose` по 1–150 символов, `people_count` не больше вместимости зала. Живых заявок `pending` не больше 3
+- Заявка `pending`, у которой `starts_at` уже наступил, в ответе становится `expired`: не входит в лимит, не одобряется. Одобренная бронь после `ends_at` в ответе — `completed`. Оба статуса не пишутся в БД
+- Перенос одобренной брони создаёт новую заявку `pending` со ссылкой на исходную. Старый слот снимается только когда перенос одобрен. Пока первая заявка на перенос открыта, вторую создать нельзя
+- Лента `GET /bookings` — только одобренные. Расписание показывает свои и чужие `pending` и `approved`. Занятость зала и конфликт слота считают только `approved`
+- Модерация: список, approve, reject, cancel, return-to-review. После approve, reject и отмены админом владельцу уходит VK-уведомление, если флаг включён; сбой VK не отменяет операцию
+- HMAC-подпись launch params, без сессий и JWT. CORS для Origin из конфига, `OPTIONS` отвечает 204 до проверки подписи
 - Swagger UI, миграции PostgreSQL, Docker Compose + nginx
 
 ## Tech stack
@@ -61,6 +63,7 @@ cp example.env .env
 | `example.yaml` | локальный запуск: `postgres_host: localhost`, `server.host: localhost` |
 | `example.docker.yaml` | контейнер: `postgres_host: postgres`, `server.host: 0.0.0.0` |
 | `example.env` | переменные Compose: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_SSLMODE` |
+| `example.admins.txt` | образец списка главных админов. Скопируй в `admins.txt` |
 
 `POSTGRES_PASSWORD` в `.env` и `postgres.postgres_password` в `.yaml` должны совпадать.
 
@@ -68,6 +71,9 @@ cp example.env .env
 |---|---|
 | `vk.app_secret` | секрет приложения VK, HMAC launch params |
 | `vk.notify_token` | сервисный токен `notifications.sendMessage`; пустой — не отправляем |
+| `admins.txt` | VK ID главных админов, по одному на строку (не в `.yaml`). Пустые строки и `#` пропускаются. Пустой, только комментарии или отсутствующий файл — админов нет. Строка не из целого `≥ 1` — сервер не стартует. Файл в git не попадает |
+| `server.cors_origins` | точные Origin фронта (`https://host`, со схемой и портом). Пусто — браузер с другого домена запросы не прочитает. Несколько через env: `CORS_ORIGINS=https://a,https://b` |
+| `server.swagger.enabled` | `true` — открыть Swagger UI. По умолчанию выключен, в проде не включать. Env: `SWAGGER_ENABLED` |
 | `server.swagger.host` | хост в Swagger UI для браузера (`localhost`), не `0.0.0.0` |
 | `server.swagger.schema` | `http` / `https` |
 
@@ -75,7 +81,7 @@ cp example.env .env
 
 ### Local
 
-1. Подними PostgreSQL и скопируй `example.yaml` → `.yaml`.
+1. Подними PostgreSQL, скопируй `example.yaml` → `.yaml` и `example.admins.txt` → `admins.txt`. В `admins.txt` впиши VK ID главных админов.
 2. Миграции:
 
 ```bash
@@ -91,7 +97,7 @@ go run ./cmd/main.go
 | | |
 |---|---|
 | API | http://localhost:8080/api/v1/ |
-| Swagger | http://localhost:8080/api/v1/swagger/index.html |
+| Swagger | http://localhost:8080/api/v1/swagger/ — редирект на `index.html`, только при `server.swagger.enabled: true` |
 | Health | `GET /api/v1/health` (без подписи) |
 
 ### Docker
@@ -99,6 +105,7 @@ go run ./cmd/main.go
 ```bash
 cp example.docker.yaml .yaml
 cp example.env .env
+cp example.admins.txt admins.txt
 make docker-build
 make docker-up
 ```
@@ -108,11 +115,11 @@ make docker-up
 | | |
 |---|---|
 | API | http://localhost/api/v1/ |
-| Swagger | http://localhost/api/v1/swagger/index.html |
+| Swagger | http://localhost/api/v1/swagger/ — редирект на `index.html`, только при `server.swagger.enabled: true` |
 
-Порядок сервисов: `postgres` → `migrate` → `studspace_server` → `nginx`. Конфиг монтируется как `.yaml` → `/app/.yaml`, логи пишутся в `./logs`.
+Порядок сервисов: `postgres` → `migrate` → `studspace_server` → `nginx`. Конфиг монтируется как `.yaml` → `/app/.yaml`, список админов — `admins.txt` → `/app/admins.txt`, логи пишутся в `./logs`. Файл `admins.txt` должен существовать до `docker-up`, иначе Docker создаст вместо него каталог.
 
-`nginx.conf` проксирует `/api/v1/` на `studspace_server:8080` (30 r/s, burst 50). Остальное — 404.
+`nginx.conf` слушает HTTP **80** и проксирует `/api/v1/` на `studspace_server:8080` (30 r/s, burst 50). Остальное — 404. TLS для VK завершается перед контейнером: на хосте или у балансировщика. Внутри compose сертификата нет.
 
 Остановка: `make docker-down`. С удалением томов: `make docker-clean`.
 
@@ -139,15 +146,16 @@ make docker-clean  # down -v + prune, удаляет данные postgres
 Authorization: VK vk_user_id=...&vk_ts=...&sign=...
 ```
 
-Подпись — HMAC-SHA256 от launch params (`vk.app_secret`). `vk_user_id` только из params. Роль `admin` — колонка в БД.
+Подпись — HMAC-SHA256 строки `vk_*` как в query (`%2C`, `%20`), секрет `vk.app_secret`. `sign` в строку не входит. `vk_ts` старше 24 часов и `vk_user_id < 1` — `INVALID_SIGN`. Роль `admin` выставляет `POST /auth/sync` по `admins.txt`.
+
+`GET /api/v1/health` и Swagger подпись не проверяют. Выключенный Swagger на `{prefix}/swagger/` отвечает 404, а не 401. Чужой `Origin` не получает `Access-Control-Allow-Origin`.
 
 | Группа | Методы |
 |---|---|
 | Пользователь | `POST /auth/sync`, `GET /me`, `PATCH /me`, `PATCH /me/notifications` |
-| Главная / залы | `GET /home` (`today`: брони + свои ивенты), `GET /spaces`, `GET /spaces/{id}/availability` |
+| Главная / залы | `GET /home`, `GET /spaces`, `GET /spaces/{id}/availability?date=` |
 | Расписание | `GET /schedule`, `GET /calendar/busy-days` |
-| Брони | `POST /bookings`, `GET /bookings/my`, withdraw / cancel / reschedule |
-| Мероприятия | `GET /events`, registration, waitlist |
-| Админ | approve / reject / cancel / return-to-review, CRUD мероприятий |
+| Брони | `GET /bookings`, `POST /bookings`, `GET /bookings/my`, `POST /bookings/{id}/withdraw`, `POST /bookings/{id}/cancel`, `POST /bookings/{id}/reschedule` |
+| Админ | `GET /admin/bookings`, `POST /admin/bookings/{id}/approve`, `.../reject`, `.../cancel`, `.../return-to-review` |
 
 Полная схема — Swagger UI.
