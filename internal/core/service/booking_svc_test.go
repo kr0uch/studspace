@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,7 +12,74 @@ import (
 	"github.com/kr0uch/studspace/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
+
+func TestBookingService_CreateBookingApplicantName(t *testing.T) {
+	ctx := context.Background()
+	actor := testStudent()
+	actor.Patronymic = null.StringFrom("Иванович")
+	actor.Occupation = null.StringFrom("Студент")
+	originalActor := actor
+	hall := testHall()
+	now := time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC)
+	starts, ends := tomorrowSlot(now)
+	ptr := func(s string) *string { return &s }
+	for _, tt := range []struct {
+		name                string
+		first, last         *string
+		wantFirst, wantLast string
+		invalidField        string
+	}{
+		{name: "profile defaults", wantFirst: actor.FirstName, wantLast: actor.LastName},
+		{name: "custom names trimmed", first: ptr("  Пётр  "), last: ptr("\tПетров\n"), wantFirst: "Пётр", wantLast: "Петров"},
+		{name: "only first name", first: ptr("Пётр"), wantFirst: "Пётр", wantLast: actor.LastName},
+		{name: "only last name", last: ptr("Петров"), wantFirst: actor.FirstName, wantLast: "Петров"},
+		{name: "100 unicode characters", first: ptr(strings.Repeat("Я", 100)), wantFirst: strings.Repeat("Я", 100), wantLast: actor.LastName},
+		{name: "empty first name", first: ptr(""), invalidField: "first_name"},
+		{name: "blank last name", last: ptr(" \t\n"), invalidField: "last_name"},
+		{name: "long first name", first: ptr(strings.Repeat("Я", 101)), invalidField: "first_name"},
+		{name: "long last name", last: ptr(strings.Repeat("Я", 101)), invalidField: "last_name"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			bookings := new(mockBookingRepository)
+			spaces := new(mockSpaceRepository)
+			users := new(mockUserRepository)
+			if tt.invalidField == "" {
+				spaces.On("GetSpaceByID", ctx, hall.SpaceID).Return(&hall, nil)
+				bookings.On("CountPendingBookingsByUser", ctx, actor.UserID, now).Return(0, nil)
+				bookings.On("ListOverlappingBookings", ctx, hall.SpaceID, starts, ends, (*int64)(nil)).Return([]entities.Booking{}, nil)
+				expected := entities.Booking{
+					UserID: actor.UserID, SpaceID: hall.SpaceID,
+					FirstName: tt.wantFirst, LastName: tt.wantLast,
+					Patronymic: actor.Patronymic, Occupation: actor.Occupation,
+					Title: "Учёба", Purpose: "Для команды", PeopleCount: 2,
+					StartsAt: starts, EndsAt: ends,
+				}
+				bookings.On("CreateBooking", ctx, expected).Return(&expected, nil)
+			}
+			got, err := NewBookingService(bookings, spaces, users, new(mockNotifyRepository)).CreateBooking(ctx, actor, dto.CreateBooking{
+				SpaceID: hall.SpaceID, StartsAt: starts, EndsAt: ends,
+				Title: "Учёба", Purpose: "Для команды", PeopleCount: 2,
+				FirstName: tt.first, LastName: tt.last,
+			}, now)
+			if tt.invalidField != "" {
+				require.ErrorIs(t, err, errors.ErrValidation)
+				assert.Nil(t, got)
+				details := errors.ParseHttpError(err).Details.(errors.ValidationDetails)
+				assert.Contains(t, details.Fields, tt.invalidField)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantFirst, got.FirstName)
+				assert.Equal(t, tt.wantLast, got.LastName)
+			}
+			assert.Equal(t, originalActor, actor)
+			users.AssertNotCalled(t, "UpdateUser", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			spaces.AssertExpectations(t)
+			bookings.AssertExpectations(t)
+		})
+	}
+}
 
 func TestBookingService_CreateBooking(t *testing.T) {
 	ctx := context.Background()
