@@ -453,6 +453,7 @@
                         "VKAuth": []
                     }
                 ],
+                "description": "Имя и фамилию можно изменить для этой заявки через first_name и last_name. Если поле не передано или null, используется значение из профиля. Профиль не меняется.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1509,6 +1510,14 @@
             "type": "object",
             "properties": {
                 "ends_at": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "description": "Имя для этой заявки; если не передано или null — из профиля. От 1 до 100 символов.",
+                    "type": "string"
+                },
+                "last_name": {
+                    "description": "Фамилия для этой заявки; если не передана или null — из профиля. От 1 до 100 символов.",
                     "type": "string"
                 },
                 "people_count": {

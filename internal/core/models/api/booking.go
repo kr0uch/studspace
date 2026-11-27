@@ -9,6 +9,10 @@ import (
 )
 
 type CreateBookingRequest struct {
+	// Имя для этой заявки; если не передано или null — из профиля. От 1 до 100 символов.
+	FirstName *string `json:"first_name"`
+	// Фамилия для этой заявки; если не передана или null — из профиля. От 1 до 100 символов.
+	LastName    *string   `json:"last_name"`
 	SpaceID     int16     `json:"space_id"`
 	Title       string    `json:"title"`
 	StartsAt    time.Time `json:"starts_at"`

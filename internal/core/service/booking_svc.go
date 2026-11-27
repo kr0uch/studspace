@@ -56,6 +56,30 @@ func NewBookingService(
 }
 
 func (s *BookingService) CreateBooking(ctx context.Context, actor entities.User, in dto.CreateBooking, now time.Time) (*entities.Booking, error) {
+	firstName, lastName := actor.FirstName, actor.LastName
+	fields := map[string]string{}
+	for _, field := range []struct {
+		name  string
+		value *string
+		out   *string
+	}{
+		{"first_name", in.FirstName, &firstName},
+		{"last_name", in.LastName, &lastName},
+	} {
+		if field.value == nil {
+			continue
+		}
+		*field.out = strings.TrimSpace(*field.value)
+		if *field.out == "" {
+			fields[field.name] = "обязательное поле"
+		} else if utf8.RuneCountInString(*field.out) > maxUserNameLen {
+			fields[field.name] = "не больше 100 символов"
+		}
+	}
+	if len(fields) > 0 {
+		return nil, errors.Validation(fields)
+	}
+
 	space, err := activeSpace(ctx, s.spaces, in.SpaceID)
 	if err != nil {
 		return nil, err
@@ -85,8 +109,8 @@ func (s *BookingService) CreateBooking(ctx context.Context, actor entities.User,
 	return s.bookings.CreateBooking(ctx, entities.Booking{
 		UserID:      actor.UserID,
 		SpaceID:     in.SpaceID,
-		FirstName:   actor.FirstName,
-		LastName:    actor.LastName,
+		FirstName:   firstName,
+		LastName:    lastName,
 		Patronymic:  actor.Patronymic,
 		Occupation:  actor.Occupation,
 		Title:       in.Title,

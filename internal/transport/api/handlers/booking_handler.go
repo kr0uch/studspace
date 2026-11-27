@@ -49,6 +49,7 @@ func NewBookingController(bookingService BookingService, spaceService BookingSpa
 
 // CreateBookingHandler godoc
 // @Summary Создать заявку на бронь
+// @Description Имя и фамилию можно изменить для этой заявки через first_name и last_name. Если поле не передано или null, используется значение из профиля. Профиль не меняется.
 // @Tags Брони
 // @Accept json
 // @Produce json
@@ -75,6 +76,8 @@ func (c *BookingController) CreateBookingHandler(w http.ResponseWriter, r *http.
 
 	now := time.Now()
 	booking, err := c.bookingService.CreateBooking(r.Context(), *user, dto.CreateBooking{
+		FirstName:   in.FirstName,
+		LastName:    in.LastName,
 		SpaceID:     in.SpaceID,
 		StartsAt:    in.StartsAt,
 		EndsAt:      in.EndsAt,

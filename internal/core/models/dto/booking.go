@@ -7,6 +7,8 @@ import (
 )
 
 type CreateBooking struct {
+	FirstName   *string
+	LastName    *string
 	SpaceID     int16
 	StartsAt    time.Time
 	EndsAt      time.Time

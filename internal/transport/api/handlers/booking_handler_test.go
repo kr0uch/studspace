@@ -148,6 +148,69 @@ func TestBookingController_CreateBookingHandler(t *testing.T) {
 	})
 }
 
+func TestBookingController_CreateBookingHandlerApplicantName(t *testing.T) {
+	for _, tt := range []struct {
+		name        string
+		body        string
+		first, last *string
+		badRequest  bool
+	}{
+		{name: "custom names", body: `{"first_name":"Пётр","last_name":"Петров"}`, first: stringPointer("Пётр"), last: stringPointer("Петров")},
+		{name: "omitted names", body: `{}`},
+		{name: "null names", body: `{"first_name":null,"last_name":null}`},
+		{name: "first name only", body: `{"first_name":"Пётр"}`, first: stringPointer("Пётр")},
+		{name: "wrong name type", body: `{"first_name":123}`, badRequest: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			user := testHandlerUser()
+			bookings := new(mockBookingService)
+			spaces := new(mockBookingSpaceService)
+			if !tt.badRequest {
+				first, last := user.FirstName, user.LastName
+				if tt.first != nil {
+					first = *tt.first
+				}
+				if tt.last != nil {
+					last = *tt.last
+				}
+				bookings.On("CreateBooking", mock.Anything, *user, dto.CreateBooking{
+					FirstName: tt.first, LastName: tt.last,
+				}, mock.AnythingOfType("time.Time")).Return(&entities.Booking{
+					BookingID: 10, UserID: user.UserID, SpaceID: 1,
+					FirstName: first, LastName: last, Status: entities.BookingStatusPending,
+				}, nil)
+				spaces.On("GetSpaceByID", mock.Anything, int16(1)).Return(&entities.Space{SpaceID: 1}, nil)
+			}
+			req := httptest.NewRequest(http.MethodPost, "/bookings", bytes.NewBufferString(tt.body))
+			req = req.WithContext(web.ContextWithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+			err := NewBookingController(bookings, spaces, new(mockBookingUserService)).CreateBookingHandler(w, req)
+			if tt.badRequest {
+				require.ErrorIs(t, err, errors.ErrBadRequest)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, http.StatusCreated, w.Code)
+				var got api.Booking
+				require.NoError(t, json.NewDecoder(w.Body).Decode(&got))
+				if tt.first != nil {
+					assert.Equal(t, *tt.first, got.FirstName)
+				} else {
+					assert.Equal(t, user.FirstName, got.FirstName)
+				}
+				if tt.last != nil {
+					assert.Equal(t, *tt.last, got.LastName)
+				} else {
+					assert.Equal(t, user.LastName, got.LastName)
+				}
+			}
+			bookings.AssertExpectations(t)
+			spaces.AssertExpectations(t)
+		})
+	}
+}
+
+func stringPointer(s string) *string { return &s }
+
 func TestBookingController_ListMyBookingsHandler(t *testing.T) {
 	user := testHandlerUser()
 	bookings := new(mockBookingService)
